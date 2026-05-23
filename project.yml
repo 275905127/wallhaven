@@ -1,0 +1,15 @@
+name: Wallhaven
+options:
+  bundleIdPrefix: com.yourname
+targets:
+  WallhavenApp:
+    type: application
+    platform: iOS
+    deploymentTarget: "15.0"
+    sources: [Sources]
+    settings:
+      # 允许免证书编译（适合个人安装）
+      CODE_SIGNING_REQUIRED: NO
+      CODE_SIGNING_ALLOWED: NO
+      # 自动生成启动图配置
+      INFOPLIST_KEY_UILaunchScreen_Generation: YES
