@@ -107,7 +107,7 @@ struct WallpaperDetailView: View {
                             .foregroundStyle(.white)
                     }
                 }
-                .ifAvailable(iOS26: { $0.buttonStyle(.glass) })
+                .buttonStyle(.glass)
             }
         }
     }
@@ -259,3 +259,4 @@ extension View {
         }
     }
 }
+

@@ -88,15 +88,7 @@ struct SourceRowView: View {
 
     var body: some View {
         HStack(spacing: 12) {
-            Image(systemName: source.type.iconName)
-                .font(.title3)
-                .foregroundStyle(.blue)
-                .frame(width: 36, height: 36)
-                .ifAvailable(iOS26: {
-                    $0.glassEffect(in: .circle)
-                }, fallback: {
-                    $0.background(.blue.opacity(0.15), in: Circle())
-                })
+            typeIconView
 
             VStack(alignment: .leading, spacing: 2) {
                 Text(source.name)
@@ -115,5 +107,22 @@ struct SourceRowView: View {
             }
         }
         .padding(.vertical, 4)
+    }
+
+    @ViewBuilder
+    private var typeIconView: some View {
+        if #available(iOS 26, *) {
+            Image(systemName: source.type.iconName)
+                .font(.title3)
+                .foregroundStyle(.blue)
+                .frame(width: 36, height: 36)
+                .glassEffect(in: .circle)
+        } else {
+            Image(systemName: source.type.iconName)
+                .font(.title3)
+                .foregroundStyle(.blue)
+                .frame(width: 36, height: 36)
+                .background(.blue.opacity(0.15), in: Circle())
+        }
     }
 }
