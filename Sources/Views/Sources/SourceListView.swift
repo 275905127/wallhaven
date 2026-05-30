@@ -16,7 +16,7 @@ struct SourceListView: View {
                 sourceList
             }
         }
-        .navigationTitle("Sources")
+        .navigationTitle("图源")
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
                 if #available(iOS 26, *) {
@@ -41,17 +41,17 @@ struct SourceListView: View {
 
     private var emptyStateView: some View {
         ContentUnavailableView(
-            "No Sources",
+            "暂无图源",
             systemImage: "link.icloud",
-            description: Text("Add wallpaper sources to start browsing.")
+            description: Text("添加壁纸图源以开始浏览")
         )
         .overlay(alignment: .bottom) {
             if #available(iOS 26, *) {
-                Button("Add Source") { showAddSource = true }
+                Button("添加图源") { showAddSource = true }
                     .buttonStyle(.glassProminent)
                     .padding(.bottom, 32)
             } else {
-                Button("Add Source") { showAddSource = true }
+                Button("添加图源") { showAddSource = true }
                     .buttonStyle(.borderedProminent)
                     .padding(.bottom, 32)
             }
@@ -68,7 +68,7 @@ struct SourceListView: View {
                         Button(role: .destructive) {
                             deleteSource(source)
                         } label: {
-                            Label("Delete", systemImage: "trash")
+                            Label("删除", systemImage: "trash")
                         }
                     }
             }
@@ -100,7 +100,7 @@ struct SourceRowView: View {
             Spacer()
 
             if !source.isEnabled {
-                Text("Disabled")
+                Text("已禁用")
                     .font(.caption).foregroundStyle(.secondary)
                     .padding(.horizontal, 8).padding(.vertical, 2)
                     .background(.quaternary, in: Capsule())
@@ -126,3 +126,4 @@ struct SourceRowView: View {
         }
     }
 }
+

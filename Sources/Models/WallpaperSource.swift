@@ -32,7 +32,7 @@ enum SourceType: String, CaseIterable, Codable {
 
     var displayName: String {
         switch self {
-        case .directURL: return "Direct URL"
+        case .directURL: return "直链URL"
         case .wallhavenAPI: return "Wallhaven API"
         case .unsplashAPI: return "Unsplash API"
         case .pexelsAPI: return "Pexels API"

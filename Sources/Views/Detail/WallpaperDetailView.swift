@@ -40,7 +40,7 @@ struct WallpaperDetailView: View {
                     .tint(.white)
             } else if let error = loadError {
                 ContentUnavailableView(
-                    "Failed to Load",
+                    "加载失败",
                     systemImage: "exclamationmark.triangle",
                     description: Text(error)
                 )
@@ -50,7 +50,7 @@ struct WallpaperDetailView: View {
             fullImage = await imageLoader.loadImage(from: wallpaper.fullImageURL)
             isLoading = false
             if fullImage == nil {
-                loadError = "Could not load image"
+                loadError = "无法加载图片"
             }
         }
     }
@@ -90,13 +90,13 @@ struct WallpaperDetailView: View {
 
                 Menu {
                     Button { Task { await saveToPhotos() } } label: {
-                        Label("Save to Photos", systemImage: "square.and.arrow.down")
+                        Label("保存到相册", systemImage: "square.and.arrow.down")
                     }
                     Button { Task { await setAsWallpaper() } } label: {
-                        Label("Set as Wallpaper", systemImage: "house")
+                        Label("设为壁纸", systemImage: "house")
                     }
                     ShareLink(item: wallpaper.fullImageURL) {
-                        Label("Share", systemImage: "square.and.arrow.up")
+                        Label("分享", systemImage: "square.and.arrow.up")
                     }
                 } label: {
                     if #available(iOS 26, *) {
@@ -259,4 +259,5 @@ extension View {
         }
     }
 }
+
 

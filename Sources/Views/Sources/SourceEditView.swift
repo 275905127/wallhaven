@@ -31,24 +31,24 @@ struct SourceEditView: View {
                 typeSection
                 settingsSection
             }
-            .navigationTitle(isEditing ? "Edit Source" : "Add Source")
+            .navigationTitle(isEditing ? "编辑图源" : "添加图源")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") { dismiss() }
+                    Button("取消") { dismiss() }
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     if #available(iOS 26, *) {
-                        Button(isEditing ? "Save" : "Add") { saveSource() }
+                        Button(isEditing ? "保存" : "添加") { saveSource() }
                             .buttonStyle(.glassProminent)
                             .disabled(!isValid)
                     } else {
-                        Button(isEditing ? "Save" : "Add") { saveSource() }
+                        Button(isEditing ? "保存" : "添加") { saveSource() }
                             .disabled(!isValid)
                     }
                 }
             }
-            .alert("Validation Error", isPresented: $showValidationError) {
+            .alert("输入错误", isPresented: $showValidationError) {
                 Button("OK") {}
             } message: {
                 Text(validationMessage)
@@ -64,23 +64,23 @@ struct SourceEditView: View {
     @ViewBuilder
     private var sourceInfoSection: some View {
         Section {
-            TextField("Source Name", text: $name).textContentType(.name)
-            TextField("URL or API Endpoint", text: $urlString)
+            TextField("图源名称", text: $name).textContentType(.name)
+            TextField("URL 或 API 端点", text: $urlString)
                 .keyboardType(.URL).textContentType(.URL)
                 .autocapitalization(.none).disableAutocorrection(true)
         } header: {
-            Text("Source Info")
+            Text("图源信息")
         } footer: {
             Text(sourceType == .directURL
-                ? "Enter a URL that returns JSON with an array of wallpaper objects."
-                : "Enter the API endpoint URL including your API key if needed.")
+                ? "输入返回壁纸 JSON 数组的 URL 地址"
+                : "输入 API 端点地址，如需 API Key 请一并包含")
         }
     }
 
     @ViewBuilder
     private var typeSection: some View {
-        Section("Source Type") {
-            Picker("Type", selection: $sourceType) {
+        Section("图源类型") {
+            Picker("类型", selection: $sourceType) {
                 ForEach(SourceType.allCases, id: \.self) { type in
                     HStack {
                         Image(systemName: type.iconName)
@@ -94,13 +94,13 @@ struct SourceEditView: View {
 
     @ViewBuilder
     private var settingsSection: some View {
-        Section { Toggle("Enabled", isOn: $isEnabled) }
-            header: { Text("Settings") }
+        Section { Toggle("已启用", isOn: $isEnabled) }
+            header: { Text("设置") }
     }
 
     private func saveSource() {
         guard isValid else {
-            validationMessage = "Please fill in both name and URL."
+            validationMessage = "请填写图源名称和 URL"
             showValidationError = true
             return
         }
@@ -123,3 +123,4 @@ struct SourceEditView: View {
         dismiss()
     }
 }
+

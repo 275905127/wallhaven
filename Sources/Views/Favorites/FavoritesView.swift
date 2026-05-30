@@ -13,9 +13,9 @@ struct FavoritesView: View {
         Group {
             if favoriteWallpapers.isEmpty {
                 ContentUnavailableView(
-                    "No Favorites",
+                    "暂无收藏",
                     systemImage: "heart",
-                    description: Text("Your favorite wallpapers will appear here.")
+                    description: Text("你收藏的壁纸会显示在这里")
                 )
             } else {
                 ScrollView {
@@ -34,10 +34,11 @@ struct FavoritesView: View {
                 }
             }
         }
-        .navigationTitle("Favorites")
+        .navigationTitle("收藏")
         .sheet(item: $selectedWallpaper) { wallpaper in
             WallpaperDetailView(wallpaper: wallpaper)
         }
     }
 }
+
 

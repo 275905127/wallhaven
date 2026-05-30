@@ -24,12 +24,11 @@ enum AppTab: String, Identifiable, Hashable, CaseIterable {
     var label: some View {
         switch self {
         case .browse:
-            Label("Browse", systemImage: "photo.on.rectangle.angled")
+            Label("浏览", systemImage: "photo.on.rectangle.angled")
         case .favorites:
-            Label("Favorites", systemImage: "heart.fill")
+            Label("收藏", systemImage: "heart.fill")
         case .sources:
-            Label("Sources", systemImage: "link.icloud")
+            Label("图源", systemImage: "link.icloud")
         }
     }
 }
-

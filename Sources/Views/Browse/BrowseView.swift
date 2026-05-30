@@ -26,8 +26,8 @@ struct BrowseView: View {
                 content
             }
         }
-        .navigationTitle("Wallhaven")
-        .searchable(text: $searchText, prompt: "Search wallpapers")
+        .navigationTitle("壁纸库")
+        .searchable(text: $searchText, prompt: "搜索壁纸")
         .task {
             await loadAllWallpapers()
         }
@@ -73,11 +73,11 @@ struct BrowseView: View {
 
     private var emptyStateView: some View {
         ContentUnavailableView(
-            "No Wallpapers",
+            "暂无壁纸",
             systemImage: "photo.on.rectangle.angled",
             description: Text(sources.isEmpty
-                ? "Add a wallpaper source to get started."
-                : "Pull to refresh or check your sources.")
+                ? "请先添加一个壁纸图源"
+                : "下拉刷新或检查你的图源")
         )
     }
 
@@ -114,3 +114,4 @@ struct BrowseView: View {
         isLoading = false
     }
 }
+
