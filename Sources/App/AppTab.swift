@@ -6,7 +6,7 @@ enum AppTab: String, Identifiable, Hashable, CaseIterable {
     case favorites
     case sources
 
-    var id: String { rawValue }
+    nonisolated var id: String { rawValue }
 
     @ViewBuilder
     func makeContentView() -> some View {
@@ -32,3 +32,4 @@ enum AppTab: String, Identifiable, Hashable, CaseIterable {
         }
     }
 }
+
