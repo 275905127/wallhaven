@@ -22,15 +22,8 @@ struct SourceListView: View {
                 Button {
                     showAddSource = true
                 } label: {
-                    if #available(iOS 26, *) {
-                        Image(systemName: "plus")
-                    } else {
-                        Image(systemName: "plus")
-                    }
+                    Image(systemName: "plus")
                 }
-                .ifAvailable(iOS26: {
-                    $0.buttonStyle(.glass)
-                })
             }
         }
         .sheet(isPresented: $showAddSource) {
@@ -48,19 +41,11 @@ struct SourceListView: View {
             description: Text("Add wallpaper sources to start browsing.")
         )
         .overlay(alignment: .bottom) {
-            if #available(iOS 26, *) {
-                Button("Add Source") {
-                    showAddSource = true
-                }
-                .buttonStyle(.glassProminent)
-                .padding(.bottom, 32)
-            } else {
-                Button("Add Source") {
-                    showAddSource = true
-                }
-                .buttonStyle(.borderedProminent)
-                .padding(.bottom, 32)
+            Button("Add Source") {
+                showAddSource = true
             }
+            .buttonStyle(.borderedProminent)
+            .padding(.bottom, 32)
         }
     }
 
@@ -100,11 +85,7 @@ struct SourceRowView: View {
                 .font(.title3)
                 .foregroundStyle(.blue)
                 .frame(width: 36, height: 36)
-                .ifAvailable(iOS26: {
-                    $0.glassEffect(in: .circle)
-                }, fallback: {
-                    $0.background(.blue.opacity(0.15), in: Circle())
-                })
+                .background(.blue.opacity(0.15), in: Circle())
 
             VStack(alignment: .leading, spacing: 2) {
                 Text(source.name)

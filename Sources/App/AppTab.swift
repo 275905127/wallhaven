@@ -1,5 +1,6 @@
 ﻿import SwiftUI
 
+@MainActor
 enum AppTab: String, Identifiable, Hashable, CaseIterable {
     case browse
     case favorites

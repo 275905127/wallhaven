@@ -15,17 +15,10 @@ struct WallpaperDetailView: View {
 
     var body: some View {
         NavigationStack {
-            if #available(iOS 26, *) {
-                detailContent
-                    .toolbar {
-                        toolbarContent
-                    }
-            } else {
-                detailContent
-                    .toolbar {
-                        toolbarContent
-                    }
-            }
+            detailContent
+                .toolbar {
+                    toolbarContent
+                }
         }
     }
 
@@ -67,42 +60,23 @@ struct WallpaperDetailView: View {
     @ToolbarContentBuilder
     private var toolbarContent: some ToolbarContent {
         ToolbarItem(placement: .topBarLeading) {
-            if #available(iOS 26, *) {
-                Button {
-                    dismiss()
-                } label: {
-                    Image(systemName: "xmark")
-                }
-                .buttonStyle(.glass)
-            } else {
-                Button {
-                    dismiss()
-                } label: {
-                    Image(systemName: "xmark.circle.fill")
-                        .font(.title2)
-                        .foregroundStyle(.white)
-                }
+            Button {
+                dismiss()
+            } label: {
+                Image(systemName: "xmark.circle.fill")
+                    .font(.title2)
+                    .foregroundStyle(.white)
             }
         }
 
         ToolbarItem(placement: .topBarTrailing) {
             HStack(spacing: 12) {
-                if #available(iOS 26, *) {
-                    Button {
-                        isFavorite.toggle()
-                    } label: {
-                        Image(systemName: isFavorite ? "heart.fill" : "heart")
-                    }
-                    .buttonStyle(.glass)
-                    .tint(isFavorite ? .red : nil)
-                } else {
-                    Button {
-                        isFavorite.toggle()
-                    } label: {
-                        Image(systemName: isFavorite ? "heart.fill" : "heart")
-                            .font(.title2)
-                            .foregroundStyle(isFavorite ? .red : .white)
-                    }
+                Button {
+                    isFavorite.toggle()
+                } label: {
+                    Image(systemName: isFavorite ? "heart.fill" : "heart")
+                        .font(.title2)
+                        .foregroundStyle(isFavorite ? .red : .white)
                 }
 
                 Menu {
@@ -120,46 +94,27 @@ struct WallpaperDetailView: View {
                         Label("Share", systemImage: "square.and.arrow.up")
                     }
                 } label: {
-                    if #available(iOS 26, *) {
-                        Image(systemName: "ellipsis.circle")
-                    } else {
-                        Image(systemName: "ellipsis.circle.fill")
-                            .font(.title2)
-                            .foregroundStyle(.white)
-                    }
+                    Image(systemName: "ellipsis.circle.fill")
+                        .font(.title2)
+                        .foregroundStyle(.white)
                 }
-                .ifAvailable(iOS26: {
-                    $0.buttonStyle(.glass)
-                })
             }
         }
     }
 
     @ViewBuilder
     private var actionBar: some View {
-        if #available(iOS 26, *) {
-            GlassEffectContainer(spacing: 16) {
-                HStack(spacing: 16) {
-                    metadataSection
-                    actionButtons
-                }
-                .padding(.horizontal, 16)
-                .padding(.vertical, 12)
-            }
-            .padding(.bottom, 32)
-        } else {
-            HStack(spacing: 16) {
-                metadataSection
-                Spacer()
-                actionButtons
-            }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 12)
-            .background(.ultraThinMaterial)
-            .clipShape(RoundedRectangle(cornerRadius: 24))
-            .padding(.horizontal, 16)
-            .padding(.bottom, 32)
+        HStack(spacing: 16) {
+            metadataSection
+            Spacer()
+            actionButtons
         }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 12)
+        .background(.ultraThinMaterial)
+        .clipShape(RoundedRectangle(cornerRadius: 24))
+        .padding(.horizontal, 16)
+        .padding(.bottom, 32)
     }
 
     private var metadataSection: some View {
@@ -189,40 +144,24 @@ struct WallpaperDetailView: View {
     @ViewBuilder
     private var actionButtons: some View {
         HStack(spacing: 12) {
-            if #available(iOS 26, *) {
-                Button {
-                    Task { await saveToPhotos() }
-                } label: {
-                    Image(systemName: "square.and.arrow.down")
-                }
-                .buttonStyle(.glass)
+            Button {
+                Task { await saveToPhotos() }
+            } label: {
+                Image(systemName: "square.and.arrow.down")
+                    .font(.title3)
+                    .foregroundStyle(.white)
+                    .padding(10)
+                    .background(.ultraThinMaterial, in: Circle())
+            }
 
-                Button {
-                    Task { await setAsWallpaper() }
-                } label: {
-                    Image(systemName: "house")
-                }
-                .buttonStyle(.glassProminent)
-            } else {
-                Button {
-                    Task { await saveToPhotos() }
-                } label: {
-                    Image(systemName: "square.and.arrow.down")
-                        .font(.title3)
-                        .foregroundStyle(.white)
-                        .padding(10)
-                        .background(.ultraThinMaterial, in: Circle())
-                }
-
-                Button {
-                    Task { await setAsWallpaper() }
-                } label: {
-                    Image(systemName: "house")
-                        .font(.title3)
-                        .foregroundStyle(.white)
-                        .padding(10)
-                        .background(.white.opacity(0.3), in: Circle())
-                }
+            Button {
+                Task { await setAsWallpaper() }
+            } label: {
+                Image(systemName: "house")
+                    .font(.title3)
+                    .foregroundStyle(.white)
+                    .padding(10)
+                    .background(.white.opacity(0.3), in: Circle())
             }
         }
     }
@@ -290,19 +229,3 @@ struct ZoomableScrollView<Content: View>: UIViewRepresentable {
         }
     }
 }
-
-// MARK: - View Extension
-
-extension View {
-    @ViewBuilder
-    func ifAvailable<A: View>(iOS26 transform: (Self) -> A, fallback: ((Self) -> A)? = nil) -> some View {
-        if #available(iOS 26, *) {
-            transform(self)
-        } else if let fallback {
-            fallback(self)
-        } else {
-            self
-        }
-    }
-}
-

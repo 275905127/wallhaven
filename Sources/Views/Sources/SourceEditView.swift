@@ -38,18 +38,10 @@ struct SourceEditView: View {
                     Button("Cancel") { dismiss() }
                 }
                 ToolbarItem(placement: .confirmationAction) {
-                    if #available(iOS 26, *) {
-                        Button(isEditing ? "Save" : "Add") {
-                            saveSource()
-                        }
-                        .buttonStyle(.glassProminent)
-                        .disabled(!isValid)
-                    } else {
-                        Button(isEditing ? "Save" : "Add") {
-                            saveSource()
-                        }
-                        .disabled(!isValid)
+                    Button(isEditing ? "Save" : "Add") {
+                        saveSource()
                     }
+                    .disabled(!isValid)
                 }
             }
             .alert("Validation Error", isPresented: $showValidationError) {
