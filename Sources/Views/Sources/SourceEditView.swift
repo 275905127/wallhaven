@@ -38,10 +38,14 @@ struct SourceEditView: View {
                     Button("Cancel") { dismiss() }
                 }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button(isEditing ? "Save" : "Add") {
-                        saveSource()
+                    if #available(iOS 26, *) {
+                        Button(isEditing ? "Save" : "Add") { saveSource() }
+                            .buttonStyle(.glassProminent)
+                            .disabled(!isValid)
+                    } else {
+                        Button(isEditing ? "Save" : "Add") { saveSource() }
+                            .disabled(!isValid)
                     }
-                    .disabled(!isValid)
                 }
             }
             .alert("Validation Error", isPresented: $showValidationError) {
@@ -60,14 +64,10 @@ struct SourceEditView: View {
     @ViewBuilder
     private var sourceInfoSection: some View {
         Section {
-            TextField("Source Name", text: $name)
-                .textContentType(.name)
-
+            TextField("Source Name", text: $name).textContentType(.name)
             TextField("URL or API Endpoint", text: $urlString)
-                .keyboardType(.URL)
-                .textContentType(.URL)
-                .autocapitalization(.none)
-                .disableAutocorrection(true)
+                .keyboardType(.URL).textContentType(.URL)
+                .autocapitalization(.none).disableAutocorrection(true)
         } header: {
             Text("Source Info")
         } footer: {
@@ -85,8 +85,7 @@ struct SourceEditView: View {
                     HStack {
                         Image(systemName: type.iconName)
                         Text(type.displayName)
-                    }
-                    .tag(type)
+                    }.tag(type)
                 }
             }
             .pickerStyle(.menu)
@@ -95,11 +94,8 @@ struct SourceEditView: View {
 
     @ViewBuilder
     private var settingsSection: some View {
-        Section {
-            Toggle("Enabled", isOn: $isEnabled)
-        } header: {
-            Text("Settings")
-        }
+        Section { Toggle("Enabled", isOn: $isEnabled) }
+            header: { Text("Settings") }
     }
 
     private func saveSource() {
@@ -124,7 +120,6 @@ struct SourceEditView: View {
             )
             modelContext.insert(newSource)
         }
-
         dismiss()
     }
 }

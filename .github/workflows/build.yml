@@ -15,10 +15,16 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Select Xcode
+      - name: List available Xcodes
+        run: ls -d /Applications/Xcode*.app 2>/dev/null || echo "no xcodes found"
+
+      - name: Use latest Xcode
         run: |
-          sudo xcode-select -s /Applications/Xcode_16.app/Contents/Developer
+          LATEST=$(ls -d /Applications/Xcode*.app 2>/dev/null | sort -V | tail -1)
+          echo "Using: $LATEST"
+          sudo xcode-select -s "$LATEST/Contents/Developer"
           xcodebuild -version
+          xcrun --sdk iphoneos --show-sdk-version
 
       - name: Install xcodegen
         run: brew install xcodegen
@@ -28,6 +34,8 @@ jobs:
 
       - name: Build archive (no signing)
         run: |
+          SDK_VERSION=$(xcrun --sdk iphoneos --show-sdk-version)
+          echo "Building with iOS SDK $SDK_VERSION"
           xcodebuild archive \
             -project Wallhaven.xcodeproj \
             -scheme Wallhaven \
@@ -53,4 +61,3 @@ jobs:
           name: Wallhaven-unsigned.ipa
           path: Wallhaven-unsigned.ipa
           retention-days: 7
-

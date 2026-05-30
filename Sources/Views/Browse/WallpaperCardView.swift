@@ -8,8 +8,13 @@ struct WallpaperCardView: View {
     @State private var loadFailed = false
 
     var body: some View {
-        cardContent
-            .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 16))
+        if #available(iOS 26, *) {
+            cardContent
+                .glassEffect(.regular.interactive(), in: .rect(cornerRadius: 16))
+        } else {
+            cardContent
+                .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 16))
+        }
     }
 
     @ViewBuilder

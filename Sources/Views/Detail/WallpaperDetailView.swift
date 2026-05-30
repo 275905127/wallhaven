@@ -16,9 +16,7 @@ struct WallpaperDetailView: View {
     var body: some View {
         NavigationStack {
             detailContent
-                .toolbar {
-                    toolbarContent
-                }
+                .toolbar { toolbarContent }
         }
     }
 
@@ -60,61 +58,85 @@ struct WallpaperDetailView: View {
     @ToolbarContentBuilder
     private var toolbarContent: some ToolbarContent {
         ToolbarItem(placement: .topBarLeading) {
-            Button {
-                dismiss()
-            } label: {
-                Image(systemName: "xmark.circle.fill")
-                    .font(.title2)
-                    .foregroundStyle(.white)
+            if #available(iOS 26, *) {
+                Button { dismiss() } label: {
+                    Image(systemName: "xmark")
+                }
+                .buttonStyle(.glass)
+            } else {
+                Button { dismiss() } label: {
+                    Image(systemName: "xmark.circle.fill")
+                        .font(.title2)
+                        .foregroundStyle(.white)
+                }
             }
         }
 
         ToolbarItem(placement: .topBarTrailing) {
             HStack(spacing: 12) {
-                Button {
-                    isFavorite.toggle()
-                } label: {
-                    Image(systemName: isFavorite ? "heart.fill" : "heart")
-                        .font(.title2)
-                        .foregroundStyle(isFavorite ? .red : .white)
+                if #available(iOS 26, *) {
+                    Button { isFavorite.toggle() } label: {
+                        Image(systemName: isFavorite ? "heart.fill" : "heart")
+                    }
+                    .buttonStyle(.glass)
+                    .tint(isFavorite ? .red : nil)
+                } else {
+                    Button { isFavorite.toggle() } label: {
+                        Image(systemName: isFavorite ? "heart.fill" : "heart")
+                            .font(.title2)
+                            .foregroundStyle(isFavorite ? .red : .white)
+                    }
                 }
 
                 Menu {
-                    Button {
-                        Task { await saveToPhotos() }
-                    } label: {
+                    Button { Task { await saveToPhotos() } } label: {
                         Label("Save to Photos", systemImage: "square.and.arrow.down")
                     }
-                    Button {
-                        Task { await setAsWallpaper() }
-                    } label: {
+                    Button { Task { await setAsWallpaper() } } label: {
                         Label("Set as Wallpaper", systemImage: "house")
                     }
                     ShareLink(item: wallpaper.fullImageURL) {
                         Label("Share", systemImage: "square.and.arrow.up")
                     }
                 } label: {
-                    Image(systemName: "ellipsis.circle.fill")
-                        .font(.title2)
-                        .foregroundStyle(.white)
+                    if #available(iOS 26, *) {
+                        Image(systemName: "ellipsis.circle")
+                    } else {
+                        Image(systemName: "ellipsis.circle.fill")
+                            .font(.title2)
+                            .foregroundStyle(.white)
+                    }
                 }
+                .ifAvailable(iOS26: { $0.buttonStyle(.glass) })
             }
         }
     }
 
     @ViewBuilder
     private var actionBar: some View {
-        HStack(spacing: 16) {
-            metadataSection
-            Spacer()
-            actionButtons
+        if #available(iOS 26, *) {
+            GlassEffectContainer(spacing: 16) {
+                HStack(spacing: 16) {
+                    metadataSection
+                    actionButtons
+                }
+                .padding(.horizontal, 16)
+                .padding(.vertical, 12)
+            }
+            .padding(.bottom, 32)
+        } else {
+            HStack(spacing: 16) {
+                metadataSection
+                Spacer()
+                actionButtons
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 12)
+            .background(.ultraThinMaterial)
+            .clipShape(RoundedRectangle(cornerRadius: 24))
+            .padding(.horizontal, 16)
+            .padding(.bottom, 32)
         }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 12)
-        .background(.ultraThinMaterial)
-        .clipShape(RoundedRectangle(cornerRadius: 24))
-        .padding(.horizontal, 16)
-        .padding(.bottom, 32)
     }
 
     private var metadataSection: some View {
@@ -132,8 +154,7 @@ struct WallpaperDetailView: View {
                         .font(.caption)
                         .foregroundStyle(.white.opacity(0.7))
                 }
-                Text("·")
-                    .foregroundStyle(.white.opacity(0.5))
+                Text("·").foregroundStyle(.white.opacity(0.5))
                 Text(wallpaper.sourceName)
                     .font(.caption)
                     .foregroundStyle(.white.opacity(0.7))
@@ -144,29 +165,30 @@ struct WallpaperDetailView: View {
     @ViewBuilder
     private var actionButtons: some View {
         HStack(spacing: 12) {
-            Button {
-                Task { await saveToPhotos() }
-            } label: {
-                Image(systemName: "square.and.arrow.down")
-                    .font(.title3)
-                    .foregroundStyle(.white)
-                    .padding(10)
-                    .background(.ultraThinMaterial, in: Circle())
-            }
+            if #available(iOS 26, *) {
+                Button { Task { await saveToPhotos() } } label: {
+                    Image(systemName: "square.and.arrow.down")
+                }
+                .buttonStyle(.glass)
 
-            Button {
-                Task { await setAsWallpaper() }
-            } label: {
-                Image(systemName: "house")
-                    .font(.title3)
-                    .foregroundStyle(.white)
-                    .padding(10)
-                    .background(.white.opacity(0.3), in: Circle())
+                Button { Task { await setAsWallpaper() } } label: {
+                    Image(systemName: "house")
+                }
+                .buttonStyle(.glassProminent)
+            } else {
+                Button { Task { await saveToPhotos() } } label: {
+                    Image(systemName: "square.and.arrow.down")
+                        .font(.title3).foregroundStyle(.white)
+                        .padding(10).background(.ultraThinMaterial, in: Circle())
+                }
+                Button { Task { await setAsWallpaper() } } label: {
+                    Image(systemName: "house")
+                        .font(.title3).foregroundStyle(.white)
+                        .padding(10).background(.white.opacity(0.3), in: Circle())
+                }
             }
         }
     }
-
-    // MARK: - Actions
 
     private func saveToPhotos() async {
         guard let image = fullImage else { return }
@@ -198,7 +220,6 @@ struct ZoomableScrollView<Content: View>: UIViewRepresentable {
         let hosting = UIHostingController(rootView: content())
         hosting.view.translatesAutoresizingMaskIntoConstraints = false
         hosting.view.backgroundColor = .clear
-
         scrollView.addSubview(hosting.view)
         NSLayoutConstraint.activate([
             hosting.view.topAnchor.constraint(equalTo: scrollView.contentLayoutGuide.topAnchor),
@@ -208,7 +229,6 @@ struct ZoomableScrollView<Content: View>: UIViewRepresentable {
             hosting.view.widthAnchor.constraint(equalTo: scrollView.frameLayoutGuide.widthAnchor),
             hosting.view.heightAnchor.constraint(equalTo: scrollView.frameLayoutGuide.heightAnchor),
         ])
-
         context.coordinator.hostingController = hosting
         return scrollView
     }
@@ -217,15 +237,25 @@ struct ZoomableScrollView<Content: View>: UIViewRepresentable {
         context.coordinator.hostingController?.rootView = content()
     }
 
-    func makeCoordinator() -> Coordinator {
-        Coordinator()
-    }
+    func makeCoordinator() -> Coordinator { Coordinator() }
 
     class Coordinator: NSObject, UIScrollViewDelegate {
         var hostingController: UIHostingController<Content>?
+        func viewForZooming(in scrollView: UIScrollView) -> UIView? { hostingController?.view }
+    }
+}
 
-        func viewForZooming(in scrollView: UIScrollView) -> UIView? {
-            hostingController?.view
+// MARK: - View Extension
+
+extension View {
+    @ViewBuilder
+    func ifAvailable<A: View>(iOS26 transform: (Self) -> A, fallback: ((Self) -> A)? = nil) -> some View {
+        if #available(iOS 26, *) {
+            transform(self)
+        } else if let fallback {
+            fallback(self)
+        } else {
+            self
         }
     }
 }

@@ -1,7 +1,8 @@
 ﻿import SwiftUI
 
+@MainActor
 @Observable
-final class ImageLoader {
+final class ImageLoader: @unchecked Sendable {
     private let urlSession: URLSession
     private var cache: NSCache<NSURL, UIImage>
     private var runningTasks: [URL: Task<UIImage?, Never>] = [:]
@@ -22,7 +23,7 @@ final class ImageLoader {
             return await existingTask.value
         }
 
-        let task = Task<UIImage?, Never> {
+        let task = Task<UIImage?, Never> { [urlSession, cache] in
             do {
                 let (data, response) = try await urlSession.data(from: url)
                 guard let httpResponse = response as? HTTPURLResponse,

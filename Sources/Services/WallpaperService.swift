@@ -1,7 +1,8 @@
 ﻿import Foundation
 
+@MainActor
 @Observable
-final class WallpaperService {
+final class WallpaperService: @unchecked Sendable {
     private let urlSession: URLSession
     private let jsonDecoder: JSONDecoder
 
@@ -229,3 +230,4 @@ struct PexelsSource: Codable {
     let medium: String
     let original: String
 }
+

@@ -2,8 +2,8 @@
 options:
   bundleIdPrefix: com.wallhaven
   deploymentTarget:
-    iOS: "18.0"
-  xcodeVersion: "16.0"
+    iOS: "26.0"
+  xcodeVersion: "26.0"
 
 settings:
   base:
@@ -24,4 +24,3 @@ targets:
         PRODUCT_BUNDLE_IDENTIFIER: com.wallhaven.app
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
     dependencies: []
-

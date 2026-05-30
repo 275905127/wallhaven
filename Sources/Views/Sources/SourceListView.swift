@@ -19,10 +19,15 @@ struct SourceListView: View {
         .navigationTitle("Sources")
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
-                Button {
-                    showAddSource = true
-                } label: {
-                    Image(systemName: "plus")
+                if #available(iOS 26, *) {
+                    Button { showAddSource = true } label: {
+                        Image(systemName: "plus")
+                    }
+                    .buttonStyle(.glass)
+                } else {
+                    Button { showAddSource = true } label: {
+                        Image(systemName: "plus")
+                    }
                 }
             }
         }
@@ -41,11 +46,15 @@ struct SourceListView: View {
             description: Text("Add wallpaper sources to start browsing.")
         )
         .overlay(alignment: .bottom) {
-            Button("Add Source") {
-                showAddSource = true
+            if #available(iOS 26, *) {
+                Button("Add Source") { showAddSource = true }
+                    .buttonStyle(.glassProminent)
+                    .padding(.bottom, 32)
+            } else {
+                Button("Add Source") { showAddSource = true }
+                    .buttonStyle(.borderedProminent)
+                    .padding(.bottom, 32)
             }
-            .buttonStyle(.borderedProminent)
-            .padding(.bottom, 32)
         }
     }
 
@@ -54,9 +63,7 @@ struct SourceListView: View {
             ForEach(sources) { source in
                 SourceRowView(source: source)
                     .contentShape(Rectangle())
-                    .onTapGesture {
-                        editingSource = source
-                    }
+                    .onTapGesture { editingSource = source }
                     .swipeActions(edge: .trailing, allowsFullSwipe: true) {
                         Button(role: .destructive) {
                             deleteSource(source)
@@ -85,25 +92,25 @@ struct SourceRowView: View {
                 .font(.title3)
                 .foregroundStyle(.blue)
                 .frame(width: 36, height: 36)
-                .background(.blue.opacity(0.15), in: Circle())
+                .ifAvailable(iOS26: {
+                    $0.glassEffect(in: .circle)
+                }, fallback: {
+                    $0.background(.blue.opacity(0.15), in: Circle())
+                })
 
             VStack(alignment: .leading, spacing: 2) {
                 Text(source.name)
-                    .font(.body)
-                    .fontWeight(.medium)
+                    .font(.body).fontWeight(.medium)
                 Text(source.type.displayName)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .font(.caption).foregroundStyle(.secondary)
             }
 
             Spacer()
 
             if !source.isEnabled {
                 Text("Disabled")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 2)
+                    .font(.caption).foregroundStyle(.secondary)
+                    .padding(.horizontal, 8).padding(.vertical, 2)
                     .background(.quaternary, in: Capsule())
             }
         }

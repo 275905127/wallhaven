@@ -5,25 +5,13 @@ struct AppView: View {
     @State private var selectedTab: AppTab = .browse
 
     var body: some View {
-        if #available(iOS 26, *) {
-            TabView(selection: $selectedTab) {
-                ForEach(AppTab.allCases) { tab in
-                    NavigationStack {
-                        tab.makeContentView()
-                    }
-                    .tabItem { tab.label }
-                    .tag(tab)
+        TabView(selection: $selectedTab) {
+            ForEach(AppTab.allCases) { tab in
+                NavigationStack {
+                    tab.makeContentView()
                 }
-            }
-        } else {
-            TabView(selection: $selectedTab) {
-                ForEach(AppTab.allCases) { tab in
-                    NavigationStack {
-                        tab.makeContentView()
-                    }
-                    .tabItem { tab.label }
-                    .tag(tab)
-                }
+                .tabItem { tab.label }
+                .tag(tab)
             }
         }
     }
