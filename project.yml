@@ -1,15 +1,27 @@
-name: Wallhaven
+﻿name: Wallhaven
 options:
-  bundleIdPrefix: com.yourname
+  bundleIdPrefix: com.wallhaven
+  deploymentTarget:
+    iOS: "18.0"
+  xcodeVersion: "16.0"
+
+settings:
+  base:
+    SWIFT_VERSION: "6.0"
+    DEVELOPMENT_TEAM: ""
+    INFOPLIST_FILE: Resources/Info.plist
+
 targets:
-  WallhavenApp:
+  Wallhaven:
     type: application
     platform: iOS
-    deploymentTarget: "15.0"
-    sources: [Sources]
+    sources:
+      - path: Sources
+    resources:
+      - path: Resources
     settings:
-      # 允许免证书编译（适合个人安装）
-      CODE_SIGNING_REQUIRED: NO
-      CODE_SIGNING_ALLOWED: NO
-      # 自动生成启动图配置
-      INFOPLIST_KEY_UILaunchScreen_Generation: YES
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.wallhaven.app
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+    dependencies: []
+
