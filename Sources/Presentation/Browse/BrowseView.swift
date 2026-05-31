@@ -137,13 +137,13 @@ struct BrowseView: View {
                 HStack(spacing: 10) {
                     HStack(spacing: 2) {
                         BottomTabButton(title: "主页", systemImage: "house.fill", isSelected: true) { }
-                        BottomTabButton(title: "图源", systemImage: "square.grid.2x2.fill") {
+                        BottomTabButton(title: "图源", systemImage: "square.grid.2x2.fill", isSelected: false) {
                             presentedSheet = .sources
                         }
-                        BottomTabButton(title: "刷新", systemImage: "arrow.clockwise") {
+                        BottomTabButton(title: "刷新", systemImage: "arrow.clockwise", isSelected: false) {
                             Task { await viewModel.onRefresh() }
                         }
-                        BottomTabButton(title: "筛选", systemImage: "slider.horizontal.3") {
+                        BottomTabButton(title: "筛选", systemImage: "slider.horizontal.3", isSelected: false) {
                             presentedSheet = .filters
                         }
                     }
