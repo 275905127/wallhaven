@@ -6,6 +6,7 @@ struct BrowseView: View {
     @State private var selectedWallpaper: Wallpaper?
     @State private var searchTask: Task<Void, Never>?
     @State private var presentedSheet: BrowseSheet?
+    @State private var isSearchPresented = false
 
     init(viewModel: BrowseViewModel) {
         _viewModel = State(initialValue: viewModel)
@@ -21,7 +22,12 @@ struct BrowseView: View {
             .safeAreaInset(edge: .bottom, spacing: 0) {
                 bottomFloatingBar
             }
-            .searchable(text: $searchText, placement: .navigationBarDrawer(displayMode: .always), prompt: "搜索壁纸...")
+            .searchable(
+                text: $searchText,
+                isPresented: $isSearchPresented,
+                placement: .navigationBarDrawer(displayMode: .always),
+                prompt: "搜索壁纸..."
+            )
             .onChange(of: searchText) { _, newValue in
                 viewModel.onSearchDebounced(query: newValue, searchTask: &searchTask)
             }
@@ -117,86 +123,138 @@ struct BrowseView: View {
 
     private var bottomFloatingBar: some View {
         LiquidGlassContainer(spacing: 10) {
-            HStack(spacing: 6) {
-                BottomBarButton(title: "刷新", systemImage: "arrow.clockwise") {
+            VStack(spacing: 8) {
+                BottomSourceMiniBar(
+                    sourceName: viewModel.activeSourceEngine.name,
+                    systemImage: viewModel.activeSourceEngine.kind.systemImage,
+                    isRefreshing: viewModel.isRefreshing
+                ) {
+                    presentedSheet = .sources
+                } onRefresh: {
                     Task { await viewModel.onRefresh() }
                 }
 
-                BottomSourceButton(
-                    sourceName: viewModel.activeSourceEngine.name,
-                    systemImage: viewModel.activeSourceEngine.kind.systemImage
-                ) {
-                    presentedSheet = .sources
-                }
+                HStack(spacing: 10) {
+                    HStack(spacing: 2) {
+                        BottomTabButton(title: "主页", systemImage: "house.fill", isSelected: true) { }
+                        BottomTabButton(title: "图源", systemImage: "square.grid.2x2.fill") {
+                            presentedSheet = .sources
+                        }
+                        BottomTabButton(title: "刷新", systemImage: "arrow.clockwise") {
+                            Task { await viewModel.onRefresh() }
+                        }
+                        BottomTabButton(title: "筛选", systemImage: "slider.horizontal.3") {
+                            presentedSheet = .filters
+                        }
+                    }
+                    .padding(6)
+                    .liquidGlassSurface(cornerRadius: 34)
 
-                BottomBarButton(title: "筛选", systemImage: "slider.horizontal.3") {
-                    presentedSheet = .filters
+                    Button {
+                        isSearchPresented = true
+                    } label: {
+                        Image(systemName: "magnifyingglass")
+                            .font(.system(size: 25, weight: .bold))
+                            .frame(width: 66, height: 66)
+                    }
+                    .buttonStyle(.plain)
+                    .foregroundStyle(.primary)
+                    .liquidGlassSurface(cornerRadius: 33, isInteractive: true)
                 }
+                .frame(maxWidth: 430)
             }
-            .padding(6)
             .frame(maxWidth: 430)
-            .liquidGlassSurface(cornerRadius: 32)
         }
-        .padding(.horizontal, 18)
+        .padding(.horizontal, 14)
         .padding(.top, 6)
         .padding(.bottom, 8)
         .background(.clear)
     }
 }
 
-private struct BottomBarButton: View {
+private struct BottomSourceMiniBar: View {
+    let sourceName: String
+    let systemImage: String
+    let isRefreshing: Bool
+    let onSources: () -> Void
+    let onRefresh: () -> Void
+
+    var body: some View {
+        HStack(spacing: 12) {
+            Button(action: onSources) {
+                HStack(spacing: 12) {
+                    Image(systemName: systemImage)
+                        .font(.system(size: 22, weight: .semibold))
+                        .foregroundStyle(.secondary)
+                        .frame(width: 48, height: 48)
+                        .background(.quaternary, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(sourceName)
+                            .font(.headline.weight(.semibold))
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.8)
+                        Text("当前图源")
+                            .font(.caption.weight(.medium))
+                            .foregroundStyle(.secondary)
+                    }
+                }
+            }
+            .buttonStyle(.plain)
+
+            Spacer(minLength: 8)
+
+            Button(action: onRefresh) {
+                Image(systemName: isRefreshing ? "pause.fill" : "play.fill")
+                    .font(.system(size: 24, weight: .bold))
+                    .frame(width: 42, height: 42)
+            }
+            .buttonStyle(.plain)
+            .foregroundStyle(.primary)
+
+            Button(action: onSources) {
+                Image(systemName: "forward.fill")
+                    .font(.system(size: 23, weight: .bold))
+                    .frame(width: 42, height: 42)
+            }
+            .buttonStyle(.plain)
+            .foregroundStyle(.secondary)
+        }
+        .padding(.leading, 12)
+        .padding(.trailing, 10)
+        .padding(.vertical, 8)
+        .frame(maxWidth: 430)
+        .liquidGlassSurface(cornerRadius: 28)
+    }
+}
+
+private struct BottomTabButton: View {
     let title: String
     let systemImage: String
+    let isSelected: Bool
     let action: () -> Void
 
     var body: some View {
         Button(action: action) {
-            VStack(spacing: 3) {
+            VStack(spacing: 4) {
                 Image(systemName: systemImage)
-                    .font(.system(size: 19, weight: .semibold))
+                    .font(.system(size: 22, weight: .bold))
                 Text(title)
                     .font(.caption2.weight(.medium))
             }
             .frame(maxWidth: .infinity)
-            .frame(height: 54)
-            .foregroundStyle(.secondary)
-            .contentShape(RoundedRectangle(cornerRadius: 26, style: .continuous))
-        }
-        .buttonStyle(.plain)
-        .liquidGlassSurface(cornerRadius: 26, isInteractive: true)
-    }
-}
-
-private struct BottomSourceButton: View {
-    let sourceName: String
-    let systemImage: String
-    let action: () -> Void
-
-    var body: some View {
-        Button(action: action) {
-            HStack(spacing: 9) {
-                Image(systemName: systemImage)
-                    .font(.system(size: 19, weight: .semibold))
-                    .frame(width: 22)
-                VStack(alignment: .leading, spacing: 1) {
-                    Text("图源")
-                        .font(.caption2.weight(.medium))
-                        .foregroundStyle(.secondary)
-                    Text(sourceName)
-                        .font(.footnote.weight(.semibold))
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.78)
+            .frame(height: 58)
+            .padding(.horizontal, 6)
+            .foregroundStyle(isSelected ? Color.red : Color.primary)
+            .background {
+                if isSelected {
+                    Capsule(style: .continuous)
+                        .fill(.regularMaterial)
                 }
-                Spacer(minLength: 0)
             }
-            .frame(maxWidth: .infinity)
-            .frame(height: 54)
-            .padding(.horizontal, 12)
-            .contentShape(RoundedRectangle(cornerRadius: 26, style: .continuous))
+            .contentShape(Capsule(style: .continuous))
         }
         .buttonStyle(.plain)
-        .foregroundStyle(.primary)
-        .liquidGlassSurface(cornerRadius: 26, tint: .accentColor.opacity(0.18), isInteractive: true)
     }
 }
 

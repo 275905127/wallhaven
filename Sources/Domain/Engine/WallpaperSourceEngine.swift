@@ -109,6 +109,31 @@ struct SourceEngineRequest: Codable, Equatable, Sendable {
         let withScheme = trimmed.contains("://") ? trimmed : "https://\(trimmed)"
         return withScheme.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
     }
+
+    static func from(urlString: String) -> SourceEngineRequest {
+        guard let components = URLComponents(string: urlString.withHTTPSIfNeeded),
+              let host = components.host else {
+            return SourceEngineRequest(baseURL: urlString, pathTemplate: "")
+        }
+
+        let scheme = components.scheme ?? "https"
+        return SourceEngineRequest(
+            baseURL: "\(scheme)://\(host)",
+            pathTemplate: components.path,
+            pageQueryName: "page",
+            searchQueryName: "q",
+            staticQueryItems: components.queryItems?.map {
+                SourceEngineQueryItem(name: $0.name, value: $0.value ?? "")
+            } ?? []
+        )
+    }
+
+    static func wallhavenCompatible(from urlString: String) -> SourceEngineRequest {
+        var request = SourceEngineRequest.from(urlString: urlString)
+        request.baseURL = "https://wallhaven.cc/api/v1"
+        request.pathTemplate = request.pathTemplate.isEmpty ? "/search" : request.pathTemplate
+        return request
+    }
 }
 
 struct SourceEngineQueryItem: Identifiable, Codable, Equatable, Sendable {
@@ -138,7 +163,52 @@ struct SourceEngineMapping: Codable, Equatable, Sendable {
     var lastPagePath: String = ""
 }
 
+private extension String {
+    var withHTTPSIfNeeded: String {
+        contains("://") ? self : "https://\(self)"
+    }
+
+    var isImageURL: Bool {
+        guard let url = URL(string: withHTTPSIfNeeded) else { return false }
+        let imageExtensions = ["jpg", "jpeg", "png", "webp", "gif", "heic", "avif"]
+        return imageExtensions.contains(url.pathExtension.lowercased())
+    }
+}
+
 extension WallpaperSourceEngine {
+    static func smartSource(name: String, input: String) -> WallpaperSourceEngine {
+        let links = input
+            .split(whereSeparator: \.isNewline)
+            .map { String($0).trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty }
+        let trimmedName = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        let fallbackName = trimmedName.isEmpty ? "自定义图源" : trimmedName
+
+        if links.count > 1 || links.first?.isImageURL == true {
+            return WallpaperSourceEngine(
+                name: trimmedName.isEmpty ? "图片直链" : trimmedName,
+                kind: .directLinks,
+                directImages: links
+            )
+        }
+
+        guard let first = links.first else {
+            return newDirectLinksSource()
+        }
+
+        if first.localizedCaseInsensitiveContains("wallhaven.cc") {
+            var source = newWallhavenCompatibleSource()
+            source.name = fallbackName == "自定义图源" ? "Wallhaven" : fallbackName
+            source.request = SourceEngineRequest.wallhavenCompatible(from: first)
+            return source
+        }
+
+        var source = newJSONAPISource()
+        source.name = fallbackName == "自定义图源" ? "JSON API 图源" : fallbackName
+        source.request = SourceEngineRequest.from(urlString: first)
+        return source
+    }
+
     static func newDirectLinksSource() -> WallpaperSourceEngine {
         WallpaperSourceEngine(name: "图片直链", kind: .directLinks)
     }

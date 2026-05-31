@@ -5,10 +5,21 @@ struct SourceEngineSheet: View {
     let viewModel: BrowseViewModel
 
     @State private var editingSource: WallpaperSourceEngine?
+    @State private var isQuickAddPresented = false
 
     var body: some View {
         NavigationStack {
             List {
+                Section {
+                    Button {
+                        isQuickAddPresented = true
+                    } label: {
+                        Label("傻瓜式添加图源", systemImage: "wand.and.stars")
+                    }
+                } footer: {
+                    Text("粘贴图片直链、Wallhaven API 或普通 JSON API 地址，应用会自动选择合适的图源类型。")
+                }
+
                 Section("当前图源") {
                     ForEach(viewModel.sourceEngines) { source in
                         SourceEngineRow(
@@ -66,6 +77,11 @@ struct SourceEngineSheet: View {
                     Task { await viewModel.onSourceSaved(updatedSource) }
                 }
             }
+            .sheet(isPresented: $isQuickAddPresented) {
+                QuickSourceAddSheet { source in
+                    Task { await viewModel.onSourceSaved(source) }
+                }
+            }
             .presentationDetents([.large])
             .presentationBackground(.thinMaterial)
         }
@@ -111,6 +127,56 @@ private struct SourceEngineRow: View {
         case .directLinks:
             return "\(source.directImages.count) 张图片"
         }
+    }
+}
+
+private struct QuickSourceAddSheet: View {
+    @Environment(\.dismiss) private var dismiss
+
+    @State private var name = ""
+    @State private var input = ""
+
+    let onSave: (WallpaperSourceEngine) -> Void
+
+    var body: some View {
+        NavigationStack {
+            Form {
+                Section("图源名称") {
+                    TextField("可不填，自动命名", text: $name)
+                }
+
+                Section {
+                    TextEditor(text: $input)
+                        .font(.body.monospaced())
+                        .frame(minHeight: 220)
+                } header: {
+                    Text("粘贴地址")
+                } footer: {
+                    Text("多行图片地址会生成直链图源；Wallhaven API 会生成兼容图源；其他地址会生成 JSON API 图源。")
+                }
+
+                Section("会自动识别") {
+                    Label("图片直链列表", systemImage: WallpaperSourceEngineKind.directLinks.systemImage)
+                    Label("Wallhaven 兼容 API", systemImage: WallpaperSourceEngineKind.wallhaven.systemImage)
+                    Label("普通 JSON API", systemImage: WallpaperSourceEngineKind.jsonAPI.systemImage)
+                }
+            }
+            .navigationTitle("添加图源")
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("取消") { dismiss() }
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("添加") {
+                        onSave(WallpaperSourceEngine.smartSource(name: name, input: input))
+                        dismiss()
+                    }
+                    .disabled(input.lines().isEmpty)
+                }
+            }
+        }
+        .presentationDetents([.large])
+        .presentationBackground(.thinMaterial)
     }
 }
 

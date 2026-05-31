@@ -19,19 +19,23 @@ struct MasonryWallpaperGrid: View {
             )
 
             ScrollView {
-                ZStack(alignment: .topLeading) {
-                    ForEach(layout.items) { item in
-                        WallpaperCard(
-                            wallpaper: item.wallpaper,
-                            viewModel: viewModel,
-                            height: item.frame.height
-                        )
-                        .frame(width: item.frame.width, height: item.frame.height)
-                        .position(x: item.frame.midX, y: item.frame.midY)
-                        .onTapGesture { onSelect(item.wallpaper) }
+                HStack(alignment: .top, spacing: spacing) {
+                    ForEach(layout.columns.indices, id: \.self) { columnIndex in
+                        VStack(spacing: spacing) {
+                            ForEach(layout.columns[columnIndex]) { item in
+                                WallpaperCard(
+                                    wallpaper: item.wallpaper,
+                                    viewModel: viewModel,
+                                    width: layout.columnWidth,
+                                    height: item.height
+                                )
+                                .onTapGesture { onSelect(item.wallpaper) }
+                            }
+                        }
+                        .frame(width: layout.columnWidth, alignment: .top)
                     }
                 }
-                .frame(width: proxy.size.width, height: layout.contentHeight, alignment: .topLeading)
+                .frame(width: proxy.size.width, alignment: .top)
                 .padding(.top, 10)
                 .padding(.bottom, bottomInset)
             }
@@ -52,32 +56,27 @@ struct MasonryWallpaperGrid: View {
 }
 
 private struct MasonryLayout {
-    let items: [MasonryItem]
-    let contentHeight: CGFloat
+    let columns: [[MasonryItem]]
+    let columnWidth: CGFloat
 
     init(wallpapers: [Wallpaper], containerWidth: CGFloat, spacing: CGFloat, horizontalInset: CGFloat) {
         let columnCount = Self.columnCount(for: containerWidth)
         let contentWidth = max(0, containerWidth - horizontalInset * 2)
-        let columnWidth = floor((contentWidth - spacing * CGFloat(columnCount - 1)) / CGFloat(columnCount))
-        let safeColumnWidth = max(120, columnWidth)
+        let rawColumnWidth = (contentWidth - spacing * CGFloat(columnCount - 1)) / CGFloat(columnCount)
+        let safeColumnWidth = floor(max(120, rawColumnWidth))
 
+        var columns = Array(repeating: [MasonryItem](), count: columnCount)
         var columnHeights = [CGFloat](repeating: 0, count: columnCount)
-        var layoutItems: [MasonryItem] = []
-        layoutItems.reserveCapacity(wallpapers.count)
 
         for (index, wallpaper) in wallpapers.enumerated() {
             let targetColumn = columnHeights.enumerated().min(by: { $0.element < $1.element })?.offset ?? 0
             let height = Self.estimatedHeight(for: wallpaper, columnWidth: safeColumnWidth)
-            let x = horizontalInset + CGFloat(targetColumn) * (safeColumnWidth + spacing)
-            let y = columnHeights[targetColumn]
-            let frame = CGRect(x: x, y: y, width: safeColumnWidth, height: height)
-
-            layoutItems.append(MasonryItem(index: index, wallpaper: wallpaper, frame: frame))
-            columnHeights[targetColumn] = frame.maxY + spacing
+            columns[targetColumn].append(MasonryItem(index: index, wallpaper: wallpaper, height: height))
+            columnHeights[targetColumn] += height + spacing
         }
 
-        self.items = layoutItems
-        self.contentHeight = max(0, (columnHeights.max() ?? 0) - spacing)
+        self.columns = columns
+        self.columnWidth = safeColumnWidth
     }
 
     private static func columnCount(for width: CGFloat) -> Int {
@@ -99,7 +98,7 @@ private struct MasonryLayout {
 private struct MasonryItem: Identifiable {
     let index: Int
     let wallpaper: Wallpaper
-    let frame: CGRect
+    let height: CGFloat
 
     var id: String { wallpaper.id }
 }
