@@ -56,6 +56,7 @@ struct LiquidGlassContainer<Content: View>: View {
 }
 
 extension Button {
+    @MainActor
     @ViewBuilder
     func liquidGlassButtonStyle(prominent: Bool = false) -> some View {
         if #available(iOS 26.0, *) {

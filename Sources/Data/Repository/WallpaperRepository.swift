@@ -33,7 +33,7 @@ extension WallpaperDTO {
             throw NetworkError.invalidURL
         }
 
-        Wallpaper(
+        return Wallpaper(
             id: id,
             thumbnailURL: thumbnailURL,
             fullImageURL: fullImageURL,
