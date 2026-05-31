@@ -9,10 +9,7 @@ struct WallpaperCard: View {
     @State private var image: UIImage?
 
     var body: some View {
-        ZStack(alignment: .bottom) {
-            imageSection
-            infoBar
-        }
+        imageSection
         .frame(width: width, height: height)
         .background(.quaternary)
         .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
@@ -38,31 +35,6 @@ struct WallpaperCard: View {
         .task(id: wallpaper.thumbnailURL) {
             image = nil
             image = await viewModel.loadImage(from: wallpaper.thumbnailURL)
-        }
-    }
-
-    private var infoBar: some View {
-        LiquidGlassContainer(spacing: 8) {
-            HStack(spacing: 8) {
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(wallpaper.title ?? wallpaper.categoryDisplay)
-                        .font(.caption.weight(.semibold))
-                        .lineLimit(1)
-                    Text(wallpaper.resolution)
-                        .font(.caption2)
-                        .foregroundStyle(.secondary)
-                        .lineLimit(1)
-                }
-                Spacer(minLength: 4)
-                Label(wallpaper.formattedViews, systemImage: "eye")
-                    .font(.caption2.weight(.medium))
-                    .foregroundStyle(.secondary)
-            }
-            .padding(.horizontal, 10)
-            .padding(.vertical, 8)
-            .frame(width: max(0, width - 16))
-            .liquidGlassSurface(cornerRadius: 12)
-            .padding(8)
         }
     }
 }

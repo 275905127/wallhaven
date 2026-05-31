@@ -6,7 +6,6 @@ struct BrowseView: View {
     @State private var selectedWallpaper: Wallpaper?
     @State private var searchTask: Task<Void, Never>?
     @State private var presentedSheet: BrowseSheet?
-    @State private var isSearchPresented = false
     @State private var selectedBottomTab: BottomTab = .home
     @Namespace private var bottomBarNamespace
 
@@ -24,15 +23,6 @@ struct BrowseView: View {
             .safeAreaInset(edge: .bottom, spacing: 0) {
                 bottomFloatingBar
             }
-            .searchable(
-                text: $searchText,
-                isPresented: $isSearchPresented,
-                placement: .navigationBarDrawer(displayMode: .always),
-                prompt: "搜索壁纸..."
-            )
-            .onChange(of: searchText) { _, newValue in
-                viewModel.onSearchDebounced(query: newValue, searchTask: &searchTask)
-            }
             .sheet(item: $selectedWallpaper) { wallpaper in
                 DetailView(wallpaper: wallpaper, imageLoader: viewModel.imageLoader)
             }
@@ -40,6 +30,10 @@ struct BrowseView: View {
                 switch sheet {
                 case .filters:
                     FilterSheet(viewModel: viewModel)
+                case .search:
+                    SearchSheet(searchText: $searchText) { query in
+                        viewModel.onSearchDebounced(query: query, searchTask: &searchTask)
+                    }
                 case .sources:
                     SourceEngineSheet(viewModel: viewModel)
                 }
@@ -50,13 +44,6 @@ struct BrowseView: View {
             .onChange(of: presentedSheet) { _, sheet in
                 guard sheet == nil else { return }
                 selectBottomTab(.home)
-            }
-            .onChange(of: isSearchPresented) { _, isPresented in
-                if isPresented {
-                    selectBottomTab(.search)
-                } else if selectedBottomTab == .search {
-                    selectBottomTab(.home)
-                }
             }
         }
     }
@@ -136,46 +123,32 @@ struct BrowseView: View {
 
     private var bottomFloatingBar: some View {
         LiquidGlassContainer(spacing: 10) {
-            VStack(spacing: 8) {
-                BottomSourceMiniBar(
-                    sourceName: viewModel.activeSourceEngine.name,
-                    systemImage: viewModel.activeSourceEngine.kind.systemImage,
-                    isRefreshing: viewModel.isRefreshing
-                ) {
-                    presentSheet(.sources)
-                } onRefresh: {
-                    refreshFromBottomBar()
+            HStack(spacing: 10) {
+                BottomTabCluster(selectedTab: selectedBottomTab, namespace: bottomBarNamespace) { tab in
+                    switch tab {
+                    case .home:
+                        selectBottomTab(.home)
+                    case .sources:
+                        presentSheet(.sources)
+                    case .refresh:
+                        refreshFromBottomBar()
+                    case .filters:
+                        presentSheet(.filters)
+                    case .search:
+                        presentSheet(.search)
+                    }
                 }
 
-                HStack(spacing: 10) {
-                    BottomTabCluster(selectedTab: selectedBottomTab, namespace: bottomBarNamespace) { tab in
-                        switch tab {
-                        case .home:
-                            selectBottomTab(.home)
-                        case .sources:
-                            presentSheet(.sources)
-                        case .refresh:
-                            refreshFromBottomBar()
-                        case .filters:
-                            presentSheet(.filters)
-                        case .search:
-                            isSearchPresented = true
-                        }
-                    }
-
-                    Button {
-                        selectBottomTab(.search)
-                        isSearchPresented = true
-                    } label: {
-                        Image(systemName: "magnifyingglass")
-                            .font(.system(size: 25, weight: .bold))
-                            .frame(width: 66, height: 66)
-                    }
-                    .buttonStyle(.plain)
-                    .foregroundStyle(.primary)
-                    .liquidGlassSurface(cornerRadius: 33, isInteractive: true)
+                Button {
+                    presentSheet(.search)
+                } label: {
+                    Image(systemName: "magnifyingglass")
+                        .font(.system(size: 25, weight: .bold))
+                        .frame(width: 66, height: 66)
                 }
-                .frame(maxWidth: 430)
+                .buttonStyle(.plain)
+                .foregroundStyle(.primary)
+                .liquidGlassSurface(cornerRadius: 33, isInteractive: true)
             }
             .frame(maxWidth: 430)
         }
@@ -189,6 +162,8 @@ struct BrowseView: View {
         switch sheet {
         case .filters:
             selectBottomTab(.filters)
+        case .search:
+            selectBottomTab(.search)
         case .sources:
             selectBottomTab(.sources)
         }
@@ -201,7 +176,7 @@ struct BrowseView: View {
             await viewModel.onRefresh()
             try? await Task.sleep(nanoseconds: 240_000_000)
             await MainActor.run {
-                guard presentedSheet == nil, !isSearchPresented else { return }
+                guard presentedSheet == nil else { return }
                 selectBottomTab(.home)
             }
         }
@@ -211,62 +186,6 @@ struct BrowseView: View {
         withAnimation(.smooth(duration: 0.34, extraBounce: 0.12)) {
             selectedBottomTab = tab
         }
-    }
-}
-
-private struct BottomSourceMiniBar: View {
-    let sourceName: String
-    let systemImage: String
-    let isRefreshing: Bool
-    let onSources: () -> Void
-    let onRefresh: () -> Void
-
-    var body: some View {
-        HStack(spacing: 12) {
-            Button(action: onSources) {
-                HStack(spacing: 12) {
-                    Image(systemName: systemImage)
-                        .font(.system(size: 22, weight: .semibold))
-                        .foregroundStyle(.secondary)
-                        .frame(width: 48, height: 48)
-                        .background(.quaternary, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
-
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(sourceName)
-                            .font(.headline.weight(.semibold))
-                            .lineLimit(1)
-                            .minimumScaleFactor(0.8)
-                        Text("当前图源")
-                            .font(.caption.weight(.medium))
-                            .foregroundStyle(.secondary)
-                    }
-                }
-            }
-            .buttonStyle(.plain)
-
-            Spacer(minLength: 8)
-
-            Button(action: onRefresh) {
-                Image(systemName: isRefreshing ? "pause.fill" : "play.fill")
-                    .font(.system(size: 24, weight: .bold))
-                    .frame(width: 42, height: 42)
-            }
-            .buttonStyle(.plain)
-            .foregroundStyle(.primary)
-
-            Button(action: onSources) {
-                Image(systemName: "forward.fill")
-                    .font(.system(size: 23, weight: .bold))
-                    .frame(width: 42, height: 42)
-            }
-            .buttonStyle(.plain)
-            .foregroundStyle(.secondary)
-        }
-        .padding(.leading, 12)
-        .padding(.trailing, 10)
-        .padding(.vertical, 8)
-        .frame(maxWidth: 430)
-        .liquidGlassSurface(cornerRadius: 28)
     }
 }
 
@@ -375,7 +294,58 @@ private extension View {
 
 private enum BrowseSheet: Hashable, Identifiable {
     case filters
+    case search
     case sources
 
     var id: Self { self }
+}
+
+private struct SearchSheet: View {
+    @Environment(\.dismiss) private var dismiss
+
+    @Binding var searchText: String
+    let onSearch: (String) -> Void
+
+    var body: some View {
+        NavigationStack {
+            Form {
+                Section("搜索") {
+                    TextField("关键词", text: $searchText)
+                        .textInputAutocapitalization(.never)
+                        .autocorrectionDisabled()
+                        .submitLabel(.search)
+                        .onSubmit {
+                            onSearch(searchText)
+                            dismiss()
+                        }
+                }
+
+                if !searchText.isEmpty {
+                    Section {
+                        Button(role: .destructive) {
+                            searchText = ""
+                            onSearch("")
+                            dismiss()
+                        } label: {
+                            Label("清除搜索", systemImage: "xmark.circle")
+                        }
+                    }
+                }
+            }
+            .navigationTitle("搜索壁纸")
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("取消") { dismiss() }
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("搜索") {
+                        onSearch(searchText)
+                        dismiss()
+                    }
+                }
+            }
+        }
+        .presentationDetents([.medium])
+        .presentationBackground(.thinMaterial)
+    }
 }
