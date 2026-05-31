@@ -1,6 +1,6 @@
 ﻿import Foundation
 
-final class WallpaperRepository {
+final class WallpaperRepository: @unchecked Sendable {
     private let api: WallhavenAPI
 
     init(api: WallhavenAPI = WallhavenAPI()) {
@@ -47,3 +47,4 @@ extension WallpaperDTO {
         )
     }
 }
+
