@@ -108,6 +108,20 @@ final class WallpaperSourceImportTests: XCTestCase {
         XCTAssertEqual(objectResult.wallpapers[0].fullImageURL.absoluteString, "https://example.com/b.jpg")
     }
 
+    func testAutoMappingDecodesNestedSingleObjectURL() throws {
+        let source = WallpaperSourceEngine(
+            name: "Random API",
+            kind: .jsonAPI,
+            request: SourceEngineRequest(baseURL: "https://example.com", pathTemplate: "/random"),
+            mapping: SourceEngineMapping(defaultHasMore: false)
+        )
+
+        let result = try source.decodeWallpapers(from: ["data": ["url": "https://example.com/random.jpg"]], page: 1)
+        XCTAssertEqual(result.wallpapers.count, 1)
+        XCTAssertEqual(result.wallpapers[0].fullImageURL.absoluteString, "https://example.com/random.jpg")
+        XCTAssertFalse(result.hasMore)
+    }
+
     func testPaginationSupportsBooleanAndLastPagePaths() throws {
         var booleanMapping = SourceEngineMapping()
         booleanMapping.hasMorePath = "has_more"

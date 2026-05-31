@@ -19,24 +19,20 @@ struct MasonryWallpaperGrid: View {
             )
 
             ScrollView {
-                LazyVStack(spacing: spacing) {
-                    ForEach(layout.sections) { section in
-                        HStack(alignment: .top, spacing: spacing) {
-                            ForEach(section.columns.indices, id: \.self) { columnIndex in
-                                VStack(spacing: spacing) {
-                                    ForEach(section.columns[columnIndex]) { item in
-                                        WallpaperCard(
-                                            wallpaper: item.wallpaper,
-                                            viewModel: viewModel,
-                                            width: layout.columnWidth,
-                                            height: item.height
-                                        )
-                                        .onTapGesture { onSelect(item.wallpaper) }
-                                    }
-                                }
-                                .frame(width: layout.columnWidth, alignment: .top)
+                HStack(alignment: .top, spacing: spacing) {
+                    ForEach(layout.columns.indices, id: \.self) { columnIndex in
+                        LazyVStack(spacing: spacing) {
+                            ForEach(layout.columns[columnIndex]) { item in
+                                WallpaperCard(
+                                    wallpaper: item.wallpaper,
+                                    viewModel: viewModel,
+                                    width: layout.columnWidth,
+                                    height: item.height
+                                )
+                                .onTapGesture { onSelect(item.wallpaper) }
                             }
                         }
+                        .frame(width: layout.columnWidth, alignment: .top)
                     }
                 }
                 .padding(.horizontal, horizontalInset)
@@ -61,7 +57,7 @@ struct MasonryWallpaperGrid: View {
 }
 
 private struct MasonryLayout {
-    let sections: [MasonrySection]
+    let columns: [[MasonryItem]]
     let columnWidth: CGFloat
     let columnCount: Int
 
@@ -70,35 +66,21 @@ private struct MasonryLayout {
         let contentWidth = max(0, containerWidth - horizontalInset * 2)
         let rawColumnWidth = (contentWidth - spacing * CGFloat(columnCount - 1)) / CGFloat(columnCount)
         let safeColumnWidth = floor(max(120, rawColumnWidth))
-        let batchSize = columnCount * 18
 
-        var sections: [MasonrySection] = []
-        for batchStart in stride(from: 0, to: wallpapers.count, by: batchSize) {
-            let batchEnd = min(wallpapers.count, batchStart + batchSize)
-            var columns = Array(repeating: [MasonryItem](), count: columnCount)
-            var columnHeights = [CGFloat](repeating: 0, count: columnCount)
+        var columns = Array(repeating: [MasonryItem](), count: columnCount)
+        var columnHeights = [CGFloat](repeating: 0, count: columnCount)
 
-            for index in batchStart..<batchEnd {
-                let wallpaper = wallpapers[index]
-                let targetColumn = columnHeights.enumerated().min(by: { $0.element < $1.element })?.offset ?? 0
-                let height = Self.estimatedHeight(for: wallpaper, columnWidth: safeColumnWidth)
-                columns[targetColumn].append(MasonryItem(index: index, wallpaper: wallpaper, height: height))
-                columnHeights[targetColumn] += height + spacing
-            }
-            sections.append(MasonrySection(index: batchStart / batchSize, columns: columns))
+        for (index, wallpaper) in wallpapers.enumerated() {
+            let targetColumn = columnHeights.enumerated().min(by: { $0.element < $1.element })?.offset ?? 0
+            let height = Self.estimatedHeight(for: wallpaper, columnWidth: safeColumnWidth)
+            columns[targetColumn].append(MasonryItem(index: index, wallpaper: wallpaper, height: height))
+            columnHeights[targetColumn] += height + spacing
         }
 
-        self.sections = sections
+        self.columns = columns
         self.columnWidth = safeColumnWidth
         self.columnCount = columnCount
     }
-}
-
-private struct MasonrySection: Identifiable {
-    let index: Int
-    let columns: [[MasonryItem]]
-
-    var id: Int { index }
 }
 
 private struct MasonryItem: Identifiable {

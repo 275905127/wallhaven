@@ -36,7 +36,7 @@ jobs:
 
       - name: Run unit tests
         run: |
-          DESTINATION=$(xcrun simctl list devices available | awk -F '[()]' '/iPhone/ { print $2; exit }')
+          DESTINATION=$(xcodebuild -showdestinations -project Wallhaven.xcodeproj -scheme Wallhaven 2>/dev/null | awk -F 'id:' '/platform:iOS Simulator/ && /name:iPhone/ { split($2, parts, ","); gsub(/^[ \t]+|[ \t]+$/, "", parts[1]); print parts[1]; exit }')
           echo "Testing on simulator id: $DESTINATION"
           xcodebuild test \
             -project Wallhaven.xcodeproj \

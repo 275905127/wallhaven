@@ -498,7 +498,8 @@ extension WallpaperSourceEngine {
             mapping.thumbnailURLPath,
             "thumbnail", "thumb", "thumb_url", "thumbUrl", "thumbnail_url", "thumbnailUrl",
             "thumbs.large", "thumbs.original", "image.thumbnail", "image.thumb",
-            "url", "image", "image_url", "imageUrl", "path", "src", "file", "download_url"
+            "url", "image", "image_url", "imageUrl", "path", "src", "file", "download_url",
+            "data.url", "data.image", "data.imageUrl", "response.url", "response.image", "response.imageUrl"
         ].deduplicatedNonEmptyKeepingRoot()
     }
 
@@ -507,7 +508,8 @@ extension WallpaperSourceEngine {
             mapping.fullImageURLPath,
             "url", "image", "image_url", "imageUrl", "path", "src", "file", "download_url",
             "full", "full_url", "fullUrl", "original", "original_url", "originalUrl",
-            "image.url", "images.0.url"
+            "image.url", "images.0.url",
+            "data.url", "data.image", "data.imageUrl", "response.url", "response.image", "response.imageUrl"
         ].deduplicatedNonEmptyKeepingRoot()
     }
 
