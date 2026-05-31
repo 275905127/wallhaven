@@ -89,6 +89,10 @@ final class BrowseViewModel {
         await feedEngine.saveSourceEngine(sourceEngine)
     }
 
+    func onSourcesImported(_ sourceEngines: [WallpaperSourceEngine]) async {
+        await feedEngine.saveSourceEngines(sourceEngines)
+    }
+
     func onSourceDeleted(_ sourceEngine: WallpaperSourceEngine) async {
         await feedEngine.deleteSourceEngine(sourceEngine)
     }

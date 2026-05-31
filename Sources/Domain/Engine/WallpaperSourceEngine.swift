@@ -147,6 +147,8 @@ struct SourceEngineMapping: Codable, Equatable, Sendable {
     var idPath: String = "id"
     var thumbnailURLPath: String = "thumbnail"
     var fullImageURLPath: String = "url"
+    var thumbnailURLPrefix: String?
+    var fullImageURLPrefix: String?
     var titlePath: String = "title"
     var authorPath: String = ""
     var widthPath: String = ""
@@ -167,73 +169,9 @@ private extension String {
     var withHTTPSIfNeeded: String {
         contains("://") ? self : "https://\(self)"
     }
-
-    var isImageURL: Bool {
-        guard let url = URL(string: withHTTPSIfNeeded) else { return false }
-        let imageExtensions = ["jpg", "jpeg", "png", "webp", "gif", "heic", "avif"]
-        return imageExtensions.contains(url.pathExtension.lowercased())
-    }
 }
 
 extension WallpaperSourceEngine {
-    static func smartSource(name: String, input: String) -> WallpaperSourceEngine {
-        let links = input
-            .split(whereSeparator: \.isNewline)
-            .map { String($0).trimmingCharacters(in: .whitespacesAndNewlines) }
-            .filter { !$0.isEmpty }
-        let trimmedName = name.trimmingCharacters(in: .whitespacesAndNewlines)
-        let fallbackName = trimmedName.isEmpty ? "自定义图源" : trimmedName
-
-        if links.count > 1 || links.first?.isImageURL == true {
-            return WallpaperSourceEngine(
-                name: trimmedName.isEmpty ? "图片直链" : trimmedName,
-                kind: .directLinks,
-                directImages: links
-            )
-        }
-
-        guard let first = links.first else {
-            return newDirectLinksSource()
-        }
-
-        if first.localizedCaseInsensitiveContains("wallhaven.cc") {
-            var source = newWallhavenCompatibleSource()
-            source.name = fallbackName == "自定义图源" ? "Wallhaven" : fallbackName
-            source.request = SourceEngineRequest.wallhavenCompatible(from: first)
-            return source
-        }
-
-        var source = newJSONAPISource()
-        source.name = fallbackName == "自定义图源" ? "JSON API 图源" : fallbackName
-        source.request = SourceEngineRequest.from(urlString: first)
-        return source
-    }
-
-    static func newDirectLinksSource() -> WallpaperSourceEngine {
-        WallpaperSourceEngine(name: "图片直链", kind: .directLinks)
-    }
-
-    static func newJSONAPISource() -> WallpaperSourceEngine {
-        WallpaperSourceEngine(
-            name: "JSON API 图源",
-            kind: .jsonAPI,
-            request: SourceEngineRequest(
-                baseURL: "",
-                pathTemplate: "",
-                pageQueryName: "page",
-                searchQueryName: "q"
-            )
-        )
-    }
-
-    static func newWallhavenCompatibleSource() -> WallpaperSourceEngine {
-        var source = wallhavenTemplate
-        source.id = UUID()
-        source.name = "Wallhaven 兼容图源"
-        source.apiKey = ""
-        return source
-    }
-
     func endpoint(query: String, page: Int) throws -> Endpoint {
         let baseURL = request.normalizedBaseURL
         guard !baseURL.isEmpty else { throw NetworkError.invalidURL }
@@ -257,8 +195,8 @@ extension WallpaperSourceEngine {
         }
 
         let wallpapers = items.compactMap { item -> Wallpaper? in
-            guard let thumbnailURL = stringValue(in: item, at: mapping.thumbnailURLPath).flatMap(URL.init(string:)),
-                  let fullImageURL = stringValue(in: item, at: mapping.fullImageURLPath).flatMap(URL.init(string:)) else {
+            guard let thumbnailURL = urlStringValue(in: item, at: mapping.thumbnailURLPath, prefix: mapping.thumbnailURLPrefix).flatMap(URL.init(string:)),
+                  let fullImageURL = urlStringValue(in: item, at: mapping.fullImageURLPath, prefix: mapping.fullImageURLPrefix).flatMap(URL.init(string:)) else {
                 return nil
             }
             let width = intValue(in: item, at: mapping.widthPath)
@@ -312,6 +250,23 @@ extension WallpaperSourceEngine {
             return nil
         }
         return current
+    }
+
+    private func urlStringValue(in root: Any, at path: String, prefix: String?) -> String? {
+        guard let rawValue = stringValue(in: root, at: path) else { return nil }
+        if rawValue.contains("://") {
+            return rawValue
+        }
+        if rawValue.hasPrefix("//") {
+            return "https:\(rawValue)"
+        }
+        guard let prefix, !prefix.isEmpty else {
+            return rawValue
+        }
+        if rawValue.hasPrefix("/") {
+            return prefix.trimmingCharacters(in: CharacterSet(charactersIn: "/")) + rawValue
+        }
+        return prefix.trimmingCharacters(in: CharacterSet(charactersIn: "/")) + "/" + rawValue
     }
 
     private func stringValue(in root: Any, at path: String) -> String? {

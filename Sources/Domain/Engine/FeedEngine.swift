@@ -118,6 +118,25 @@ final class FeedEngine {
         await refresh()
     }
 
+    func saveSourceEngines(_ importedEngines: [WallpaperSourceEngine]) async {
+        guard !importedEngines.isEmpty else { return }
+        var firstImportedID: UUID?
+        for sourceEngine in importedEngines {
+            if let index = sourceEngines.firstIndex(where: { $0.name == sourceEngine.name }) {
+                var updatedSource = sourceEngine
+                updatedSource.id = sourceEngines[index].id
+                sourceEngines[index] = updatedSource
+                firstImportedID = firstImportedID ?? updatedSource.id
+            } else {
+                sourceEngines.append(sourceEngine)
+                firstImportedID = firstImportedID ?? sourceEngine.id
+            }
+        }
+        activeSourceEngineID = firstImportedID ?? activeSourceEngineID
+        persistSourceEngines()
+        await refresh()
+    }
+
     func deleteSourceEngine(_ sourceEngine: WallpaperSourceEngine) async {
         guard sourceEngines.count > 1 else { return }
         sourceEngines.removeAll { $0.id == sourceEngine.id }
