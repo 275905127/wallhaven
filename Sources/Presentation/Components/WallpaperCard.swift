@@ -3,6 +3,7 @@
 struct WallpaperCard: View {
     let wallpaper: Wallpaper
     let viewModel: BrowseViewModel
+    let height: CGFloat
 
     @State private var image: UIImage?
 
@@ -11,6 +12,8 @@ struct WallpaperCard: View {
             imageSection
             infoBar
         }
+        .frame(height: height)
+        .frame(maxWidth: .infinity)
         .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
         .contentShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
         .shadow(color: .black.opacity(0.14), radius: 6, y: 3)
@@ -29,7 +32,7 @@ struct WallpaperCard: View {
                     .overlay { ProgressView().scaleEffect(0.8) }
             }
         }
-        .frame(minHeight: 210)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
         .clipped()
         .task(id: wallpaper.thumbnailURL) {
             image = nil

@@ -14,6 +14,8 @@ final class BrowseViewModel {
     var currentSorting: WallhavenSorting { feedEngine.currentSorting }
     var currentQuery: String { feedEngine.currentQuery }
     var sourceConfiguration: WallhavenSourceConfiguration { feedEngine.sourceConfiguration }
+    var sourceEngines: [WallpaperSourceEngine] { feedEngine.sourceEngines }
+    var activeSourceEngine: WallpaperSourceEngine { feedEngine.activeSourceEngine }
     var categoryOptions: [WallhavenCategory] { WallhavenCategory.allCases }
     var purityOptions: [WallhavenPurity] { WallhavenPurity.allCases }
     var orderOptions: [WallhavenOrder] { WallhavenOrder.allCases }
@@ -77,6 +79,18 @@ final class BrowseViewModel {
         var configuration = sourceConfiguration
         configuration.setAPIKey(apiKey)
         await feedEngine.updateSourceConfiguration(configuration)
+    }
+
+    func onSourceSelected(_ sourceEngine: WallpaperSourceEngine) async {
+        await feedEngine.selectSourceEngine(sourceEngine)
+    }
+
+    func onSourceSaved(_ sourceEngine: WallpaperSourceEngine) async {
+        await feedEngine.saveSourceEngine(sourceEngine)
+    }
+
+    func onSourceDeleted(_ sourceEngine: WallpaperSourceEngine) async {
+        await feedEngine.deleteSourceEngine(sourceEngine)
     }
 
     func prefetchImages(for items: [Wallpaper]) {

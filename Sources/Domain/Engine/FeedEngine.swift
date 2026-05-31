@@ -5,6 +5,7 @@
 final class FeedEngine {
     private let repository: WallpaperRepository
     private let sourceConfigurationStore: WallhavenSourceConfigurationStore
+    private let sourceEngineStore: WallpaperSourceEngineStore
     private let pagination: PaginationController
     private let prefetchController: PrefetchController
     private let dedup: DeduplicationStore
@@ -16,19 +17,29 @@ final class FeedEngine {
     private(set) var currentSorting: WallhavenSorting = .toplist
     private(set) var currentQuery = ""
     private(set) var sourceConfiguration: WallhavenSourceConfiguration
+    private(set) var sourceEngines: [WallpaperSourceEngine]
+    private(set) var activeSourceEngineID: UUID
 
     var hasMore: Bool { pagination.hasMore }
+    var activeSourceEngine: WallpaperSourceEngine {
+        sourceEngines.first(where: { $0.id == activeSourceEngineID }) ?? sourceEngines[0]
+    }
     private var currentTask: Task<Void, Never>?
     private var didLoadInitialPage = false
     private var refreshGeneration = 0
 
     init(
         repository: WallpaperRepository = WallpaperRepository(),
-        sourceConfigurationStore: WallhavenSourceConfigurationStore = WallhavenSourceConfigurationStore()
+        sourceConfigurationStore: WallhavenSourceConfigurationStore = WallhavenSourceConfigurationStore(),
+        sourceEngineStore: WallpaperSourceEngineStore = WallpaperSourceEngineStore()
     ) {
         self.repository = repository
         self.sourceConfigurationStore = sourceConfigurationStore
+        self.sourceEngineStore = sourceEngineStore
         self.sourceConfiguration = sourceConfigurationStore.load()
+        let loadedSourceEngines = sourceEngineStore.loadEngines()
+        self.sourceEngines = loadedSourceEngines
+        self.activeSourceEngineID = sourceEngineStore.loadActiveEngineID(engines: loadedSourceEngines)
         self.pagination = PaginationController()
         self.prefetchController = PrefetchController(threshold: 6)
         self.dedup = DeduplicationStore()
@@ -89,6 +100,34 @@ final class FeedEngine {
         await refresh()
     }
 
+    func selectSourceEngine(_ sourceEngine: WallpaperSourceEngine) async {
+        guard sourceEngine.id != activeSourceEngineID else { return }
+        activeSourceEngineID = sourceEngine.id
+        persistSourceEngines()
+        await refresh()
+    }
+
+    func saveSourceEngine(_ sourceEngine: WallpaperSourceEngine) async {
+        if let index = sourceEngines.firstIndex(where: { $0.id == sourceEngine.id }) {
+            sourceEngines[index] = sourceEngine
+        } else {
+            sourceEngines.append(sourceEngine)
+            activeSourceEngineID = sourceEngine.id
+        }
+        persistSourceEngines()
+        await refresh()
+    }
+
+    func deleteSourceEngine(_ sourceEngine: WallpaperSourceEngine) async {
+        guard sourceEngines.count > 1 else { return }
+        sourceEngines.removeAll { $0.id == sourceEngine.id }
+        if activeSourceEngineID == sourceEngine.id {
+            activeSourceEngineID = sourceEngines.first?.id ?? WallpaperSourceEngine.wallhavenTemplateID
+        }
+        persistSourceEngines()
+        await refresh()
+    }
+
     func prefetchIfNeeded(currentIndex: Int) {
         guard prefetchController.shouldPrefetch(currentIndex: currentIndex, totalCount: wallpapers.count) else { return }
         Task { [weak self] in
@@ -113,7 +152,8 @@ final class FeedEngine {
         do {
             let result = try await repository.fetchWallpapers(
                 query: currentQuery, page: page,
-                sorting: currentSorting, configuration: sourceConfiguration
+                sorting: currentSorting, configuration: sourceConfiguration,
+                sourceEngine: activeSourceEngine
             )
             guard !Task.isCancelled else { return }
 
@@ -134,5 +174,9 @@ final class FeedEngine {
             guard !Task.isCancelled else { return }
             self.error = .invalidResponse
         }
+    }
+
+    private func persistSourceEngines() {
+        sourceEngineStore.save(engines: sourceEngines, activeEngineID: activeSourceEngineID)
     }
 }

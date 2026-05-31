@@ -20,6 +20,10 @@ struct WallhavenSourceConfiguration: Equatable, Sendable {
     }
 
     var requestPurityValue: String {
+        requestPurityValue(hasAPIKey: hasAPIKey)
+    }
+
+    func requestPurityValue(hasAPIKey: Bool) -> String {
         var allowedPurities = purities
         if !hasAPIKey {
             allowedPurities.remove(.nsfw)

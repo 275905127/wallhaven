@@ -11,13 +11,15 @@ final class WallhavenAPI {
         query: String,
         page: Int,
         sorting: WallhavenSorting,
-        configuration: WallhavenSourceConfiguration
+        configuration: WallhavenSourceConfiguration,
+        sourceEngine: WallpaperSourceEngine
     ) async throws -> WallhavenSearchResponse {
         let endpoint = Endpoint.search(
             query: query,
             page: page,
             sorting: sorting,
-            configuration: configuration
+            configuration: configuration,
+            sourceEngine: sourceEngine
         )
         return try await client.request(endpoint)
     }

@@ -31,23 +31,26 @@ extension Endpoint {
         query: String = "",
         page: Int = 1,
         sorting: WallhavenSorting = .toplist,
-        configuration: WallhavenSourceConfiguration = WallhavenSourceConfiguration()
+        configuration: WallhavenSourceConfiguration = WallhavenSourceConfiguration(),
+        sourceEngine: WallpaperSourceEngine = .wallhavenTemplate
     ) -> Endpoint {
+        let hasAPIKey = sourceEngine.hasAPIKey || configuration.hasAPIKey
+        let apiKey = sourceEngine.hasAPIKey ? sourceEngine.trimmedAPIKey : configuration.trimmedAPIKey
         var items: [URLQueryItem] = [
             URLQueryItem(name: "q", value: query),
             URLQueryItem(name: "page", value: String(page)),
             URLQueryItem(name: "sorting", value: sorting.rawValue),
             URLQueryItem(name: "categories", value: configuration.requestCategoryValue),
-            URLQueryItem(name: "purity", value: configuration.requestPurityValue),
+            URLQueryItem(name: "purity", value: configuration.requestPurityValue(hasAPIKey: hasAPIKey)),
             URLQueryItem(name: "order", value: configuration.order.rawValue),
         ]
         if sorting == .toplist {
             items.append(URLQueryItem(name: "topRange", value: configuration.topRange.rawValue))
         }
-        if configuration.hasAPIKey {
-            items.append(URLQueryItem(name: "apikey", value: configuration.trimmedAPIKey))
+        if hasAPIKey {
+            items.append(URLQueryItem(name: "apikey", value: apiKey))
         }
-        return Endpoint(path: "/search", queryItems: items)
+        return Endpoint(baseURL: sourceEngine.request.normalizedBaseURL, path: sourceEngine.request.pathTemplate, queryItems: items)
     }
 
     static func wallpaperDetail(id: String, apiKey: String? = nil) -> Endpoint {
