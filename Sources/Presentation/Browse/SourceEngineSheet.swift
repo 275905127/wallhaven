@@ -143,10 +143,12 @@ private struct SourceEngineEditor: View {
                 }
 
                 if draft.kind == .directLinks {
-                    Section("图片 URL") {
+                    Section {
                         TextEditor(text: $directImagesText)
                             .font(.body.monospaced())
                             .frame(minHeight: 220)
+                    } header: {
+                        Text("图片 URL")
                     } footer: {
                         Text("每行一个图片地址。直链图源不依赖内置 API，搜索会按 URL 文本过滤。")
                     }
@@ -178,7 +180,7 @@ private struct SourceEngineEditor: View {
     }
 
     private var requestSection: some View {
-        Section("请求") {
+        Section {
             TextField("Base URL", text: $draft.request.baseURL)
                 .textInputAutocapitalization(.never)
                 .autocorrectionDisabled()
@@ -197,13 +199,15 @@ private struct SourceEngineEditor: View {
             TextEditor(text: $staticQueryText)
                 .font(.body.monospaced())
                 .frame(minHeight: 88)
+        } header: {
+            Text("请求")
         } footer: {
             Text("固定查询参数每行一个，例如 categories=111。API Key 会作为 apikey 参数发送。")
         }
     }
 
     private var mappingSection: some View {
-        Section("JSON 映射") {
+        Section {
             TextField("列表路径", text: $draft.mapping.itemsPath)
             TextField("ID 路径", text: $draft.mapping.idPath)
             TextField("缩略图 URL 路径", text: $draft.mapping.thumbnailURLPath)
@@ -213,6 +217,8 @@ private struct SourceEngineEditor: View {
             TextField("宽度路径", text: $draft.mapping.widthPath)
             TextField("高度路径", text: $draft.mapping.heightPath)
             TextField("最后一页路径", text: $draft.mapping.lastPagePath)
+        } header: {
+            Text("JSON 映射")
         } footer: {
             Text("路径使用点号访问嵌套字段，数组下标也可作为路径段，例如 data.0.url。")
         }
