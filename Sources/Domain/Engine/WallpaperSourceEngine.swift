@@ -441,14 +441,14 @@ extension WallpaperSourceEngine {
                 in: item,
                 paths: fullImagePathCandidates,
                 prefix: mapping.fullImageURLPrefix
-            ).flatMap(URL.init(string)) else {
+            ).flatMap({ URL(string: $0) }) else {
                 return nil
             }
             let thumbnailURL = firstURLValue(
                 in: item,
                 paths: thumbnailPathCandidates,
                 prefix: mapping.thumbnailURLPrefix
-            ).flatMap(URL.init(string)) ?? fullImageURL
+            ).flatMap({ URL(string: $0) }) ?? fullImageURL
             let width = intValue(in: item, at: mapping.widthPath)
                 ?? intValue(in: item, atAny: ["width", "w", "dimension_x", "image.width", "image_width"])
             let height = intValue(in: item, at: mapping.heightPath)
