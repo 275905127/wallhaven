@@ -1,0 +1,90 @@
+﻿import UIKit
+import CryptoKit
+
+final class DiskImageCache {
+    private let fileManager: FileManager
+    private let cacheDirectory: URL
+    private let maxCacheSize: Int
+    private let ioQueue = DispatchQueue(label: "com.wallhaven.diskcache", qos: .utility)
+
+    init(maxCacheSize: Int = 500 * 1024 * 1024) {
+        self.fileManager = FileManager.default
+        self.maxCacheSize = maxCacheSize
+        let caches = fileManager.urls(for: .cachesDirectory, in: .userDomainMask).first!
+        self.cacheDirectory = caches.appendingPathComponent("WallhavenImageCache")
+        try? fileManager.createDirectory(at: cacheDirectory, withIntermediateDirectories: true)
+        performCleanupIfNeeded()
+    }
+
+    func image(for url: URL) -> UIImage? {
+        let fileURL = cacheFileURL(for: url)
+        guard fileManager.fileExists(atPath: fileURL.path),
+              let data = try? Data(contentsOf: fileURL),
+              let image = UIImage(data: data) else { return nil }
+        updateAccessDate(for: fileURL)
+        return image
+    }
+
+    func storeImage(_ image: UIImage, for url: URL) {
+        ioQueue.async { [weak self] in
+            guard let self = self else { return }
+            let fileURL = self.cacheFileURL(for: url)
+            if let data = image.jpegData(compressionQuality: 0.85) {
+                try? data.write(to: fileURL, options: .atomic)
+                self.performCleanupIfNeeded()
+            }
+        }
+    }
+
+    func removeAll() {
+        ioQueue.async { [weak self] in
+            guard let self = self else { return }
+            try? self.fileManager.removeItem(at: self.cacheDirectory)
+            try? self.fileManager.createDirectory(at: self.cacheDirectory, withIntermediateDirectories: true)
+        }
+    }
+
+    // MARK: - Private
+
+    private func cacheFileURL(for url: URL) -> URL {
+        let hash = SHA256.hash(data: Data(url.absoluteString.utf8))
+        let filename = hash.compactMap { String(format: "%02x", $0) }.joined()
+        return cacheDirectory.appendingPathComponent(filename)
+    }
+
+    private func updateAccessDate(for url: URL) {
+        var resourceValues = URLResourceValues()
+        resourceValues.contentAccessDate = Date()
+        try? (url as NSURL).setResourceValues(resourceValues)
+    }
+
+    private func performCleanupIfNeeded() {
+        ioQueue.async { [weak self] in
+            guard let self = self else { return }
+            guard let contents = try? self.fileManager.contentsOfDirectory(
+                at: self.cacheDirectory,
+                includingPropertiesForKeys: [.fileSizeKey, .contentAccessDateKey],
+                options: .skipsHiddenFiles
+            ) else { return }
+
+            let totalSize = contents.reduce(0) { sum, url in
+                sum + ((try? url.resourceValues(forKeys: [.fileSizeKey]).fileSize) ?? 0)
+            }
+            guard totalSize > self.maxCacheSize else { return }
+
+            let sorted = contents.sorted { a, b in
+                let dateA = (try? a.resourceValues(forKeys: [.contentAccessDateKey]).contentAccessDate) ?? .distantPast
+                let dateB = (try? b.resourceValues(forKeys: [.contentAccessDateKey]).contentAccessDate) ?? .distantPast
+                return dateA < dateB
+            }
+            var freed: Int = 0
+            let target = self.maxCacheSize / 2
+            for url in sorted {
+                guard totalSize - freed > target else { break }
+                let size = (try? url.resourceValues(forKeys: [.fileSizeKey]).fileSize) ?? 0
+                try? self.fileManager.removeItem(at: url)
+                freed += size
+            }
+        }
+    }
+}

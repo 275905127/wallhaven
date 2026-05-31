@@ -1,27 +1,22 @@
 ﻿import SwiftUI
-import SwiftData
 
 @main
 struct WallhavenApp: App {
-    @State private var imageLoader = ImageLoader()
-    @State private var wallpaperService = WallpaperService()
+    private let feedEngine: FeedEngine
+    private let imageLoader: ImageLoader
+    private let viewModel: BrowseViewModel
 
-    var sharedModelContainer: ModelContainer = {
-        let schema = Schema([WallpaperSource.self])
-        let config = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false)
-        do {
-            return try ModelContainer(for: schema, configurations: [config])
-        } catch {
-            fatalError("Failed to create ModelContainer: \(error)")
-        }
-    }()
+    init() {
+        let engine = FeedEngine()
+        let loader = ImageLoader()
+        self.feedEngine = engine
+        self.imageLoader = loader
+        self.viewModel = BrowseViewModel(feedEngine: engine, imageLoader: loader)
+    }
 
     var body: some Scene {
         WindowGroup {
-            AppView()
-                .environment(imageLoader)
-                .environment(wallpaperService)
+            BrowseView(viewModel: viewModel)
         }
-        .modelContainer(sharedModelContainer)
     }
 }
