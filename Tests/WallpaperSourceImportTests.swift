@@ -23,6 +23,45 @@ final class WallpaperSourceImportTests: XCTestCase {
         XCTAssertFalse(source.request.staticQueryItems.contains { $0.name == "apikey" })
         XCTAssertEqual(source.mapping.itemsPath, "data")
         XCTAssertEqual(source.mapping.fullImageURLPath, "path")
+        XCTAssertTrue(source.supportsWallhavenFilters)
+    }
+
+    func testWallhavenEndpointUsesConfiguredFilterAndAPIKeyNames() throws {
+        let json = """
+        {
+          "name": "Wallhaven",
+          "type": "api",
+          "url": "https://wallhaven.cc/api/v1/search",
+          "params": {
+            "apikey": "secret-key",
+            "atleast": "1920x1080",
+            "purity": "100"
+          }
+        }
+        """
+
+        let source = try XCTUnwrap(WallpaperSourceImporter.importSources(from: json).first)
+        var configuration = WallhavenSourceConfiguration()
+        configuration.categories = [.anime]
+        configuration.purities = [.sfw, .sketchy]
+        configuration.order = .ascending
+        let endpoint = Endpoint.search(
+            query: "city",
+            page: 2,
+            sorting: .dateAdded,
+            configuration: configuration,
+            sourceEngine: source
+        )
+        let queryItems = Dictionary(uniqueKeysWithValues: endpoint.queryItems.map { ($0.name, $0.value ?? "") })
+
+        XCTAssertEqual(queryItems["q"], "city")
+        XCTAssertEqual(queryItems["page"], "2")
+        XCTAssertEqual(queryItems["sorting"], "date_added")
+        XCTAssertEqual(queryItems["categories"], "010")
+        XCTAssertEqual(queryItems["purity"], "110")
+        XCTAssertEqual(queryItems["order"], "asc")
+        XCTAssertEqual(queryItems["apikey"], "secret-key")
+        XCTAssertEqual(queryItems["atleast"], "1920x1080")
     }
 
     func testEncodedSourceDoesNotPersistAPIKey() throws {

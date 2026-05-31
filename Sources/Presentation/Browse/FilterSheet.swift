@@ -10,7 +10,10 @@ struct FilterSheet: View {
     init(viewModel: BrowseViewModel, showsDoneButton: Bool = true) {
         self.viewModel = viewModel
         self.showsDoneButton = showsDoneButton
-        _apiKey = State(initialValue: viewModel.sourceConfiguration.apiKey)
+        let key = viewModel.activeSourceEngine.trimmedAPIKey.isEmpty
+            ? viewModel.sourceConfiguration.apiKey
+            : viewModel.activeSourceEngine.apiKey
+        _apiKey = State(initialValue: key)
     }
 
     var body: some View {

@@ -26,6 +26,15 @@ final class WallpaperRepository: @unchecked Sendable {
                 sourceEngine: sourceEngine
             )
         case .jsonAPI:
+            if sourceEngine.supportsWallhavenFilters {
+                return try await fetchWallhavenWallpapers(
+                    query: query,
+                    page: page,
+                    sorting: sorting,
+                    configuration: configuration,
+                    sourceEngine: sourceEngine
+                )
+            }
             return try await fetchJSONAPIWallpapers(query: query, page: page, sourceEngine: sourceEngine)
         case .directLinks:
             return fetchDirectLinkWallpapers(query: query, page: page, sourceEngine: sourceEngine)

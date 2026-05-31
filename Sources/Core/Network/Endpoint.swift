@@ -50,19 +50,26 @@ extension Endpoint {
     ) -> Endpoint {
         let hasAPIKey = sourceEngine.hasAPIKey || configuration.hasAPIKey
         let apiKey = sourceEngine.hasAPIKey ? sourceEngine.trimmedAPIKey : configuration.trimmedAPIKey
-        var items: [URLQueryItem] = [
+        let apiKeyName = sourceEngine.request.apiKeyQueryName.isEmpty ? "apikey" : sourceEngine.request.apiKeyQueryName
+        let controlledQueryNames = Set([
+            "q", "page", "sorting", "categories", "purity", "order", "toprange", apiKeyName.lowercased()
+        ])
+        var items = sourceEngine.request.staticQueryItems
+            .filter { !controlledQueryNames.contains($0.name.lowercased()) }
+            .map { URLQueryItem(name: $0.name, value: $0.value) }
+        items.append(contentsOf: [
             URLQueryItem(name: "q", value: query),
             URLQueryItem(name: "page", value: String(page)),
             URLQueryItem(name: "sorting", value: sorting.rawValue),
             URLQueryItem(name: "categories", value: configuration.requestCategoryValue),
             URLQueryItem(name: "purity", value: configuration.requestPurityValue(hasAPIKey: hasAPIKey)),
             URLQueryItem(name: "order", value: configuration.order.rawValue),
-        ]
+        ])
         if sorting == .toplist {
             items.append(URLQueryItem(name: "topRange", value: configuration.topRange.rawValue))
         }
         if hasAPIKey, sourceEngine.request.apiKeyPlacement == .query {
-            items.append(URLQueryItem(name: "apikey", value: apiKey))
+            items.append(URLQueryItem(name: apiKeyName, value: apiKey))
         }
         return Endpoint(
             baseURL: sourceEngine.request.normalizedBaseURL,

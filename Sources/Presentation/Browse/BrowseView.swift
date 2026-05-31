@@ -29,11 +29,6 @@ struct BrowseView: View {
                 searchNavigation
             }
         }
-        .searchable(text: $searchText, prompt: "搜索壁纸")
-        .tabViewSearchActivation(.searchTabSelection)
-        .onChange(of: searchText) { _, newValue in
-            viewModel.onSearchDebounced(query: newValue, searchTask: &searchTask)
-        }
         .tabBarMinimizeBehavior(.onScrollDown)
         .sheet(item: $selectedWallpaper) { wallpaper in
             DetailView(wallpaper: wallpaper, imageLoader: viewModel.imageLoader)
@@ -54,6 +49,10 @@ struct BrowseView: View {
         NavigationStack {
             wallpaperGrid
             .navigationTitle("搜索")
+        }
+        .searchable(text: $searchText, prompt: "搜索壁纸")
+        .onChange(of: searchText) { _, newValue in
+            viewModel.onSearchDebounced(query: newValue, searchTask: &searchTask)
         }
     }
 

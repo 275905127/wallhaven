@@ -97,6 +97,9 @@ final class FeedEngine {
         guard configuration != sourceConfiguration else { return }
         sourceConfiguration = configuration
         sourceConfigurationStore.save(configuration)
+        if activeSourceEngine.supportsWallhavenFilters {
+            persistWallhavenAPIKey(configuration.trimmedAPIKey)
+        }
         await refresh()
     }
 
@@ -201,5 +204,11 @@ final class FeedEngine {
 
     private func persistSourceEngines() {
         sourceEngineStore.save(engines: sourceEngines, activeEngineID: activeSourceEngineID)
+    }
+
+    private func persistWallhavenAPIKey(_ apiKey: String) {
+        guard let index = sourceEngines.firstIndex(where: { $0.id == activeSourceEngineID }) else { return }
+        sourceEngines[index].apiKey = apiKey
+        persistSourceEngines()
     }
 }

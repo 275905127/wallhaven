@@ -72,7 +72,9 @@ struct WallpaperSourceEngine: Identifiable, Codable, Equatable, Sendable {
     }
 
     var supportsWallhavenFilters: Bool {
-        kind == .wallhaven || id == Self.wallhavenTemplateID
+        kind == .wallhaven
+            || id == Self.wallhavenTemplateID
+            || request.normalizedBaseURL.localizedCaseInsensitiveContains("wallhaven.cc")
     }
 
     private enum CodingKeys: String, CodingKey {
