@@ -53,9 +53,7 @@ final class DiskImageCache {
     }
 
     private func updateAccessDate(for url: URL) {
-        var resourceValues = URLResourceValues()
-        resourceValues.contentAccessDate = Date()
-        try? (url as NSURL).setResourceValues(resourceValues)
+        try? (url as NSURL).setResourceValue(Date(), forKey: .contentAccessDateKey)
     }
 
     private func performCleanupIfNeeded() {
@@ -88,3 +86,4 @@ final class DiskImageCache {
         }
     }
 }
+

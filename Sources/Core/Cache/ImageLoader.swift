@@ -6,7 +6,6 @@ final class ImageLoader: @unchecked Sendable {
     private let diskCache: DiskImageCache
     private let urlSession: URLSession
     private var runningTasks: [URL: Task<UIImage?, Never>] = [:]
-    private let taskLock = NSLock()
 
     init(
         memoryCache: MemoryImageCache = MemoryImageCache(),
@@ -44,14 +43,9 @@ final class ImageLoader: @unchecked Sendable {
 
     func cancelPrefetch(for urls: [URL]) {
         for url in urls {
-            taskLock.lock()
-            let task = runningTasks[url]
-            taskLock.unlock()
-            if task != nil && memoryCache.image(for: url) == nil {
-                taskLock.lock()
-                runningTasks[url]?.cancel()
+            if let task = runningTasks[url], memoryCache.image(for: url) == nil {
+                task.cancel()
                 runningTasks[url] = nil
-                taskLock.unlock()
             }
         }
     }
@@ -68,11 +62,10 @@ final class ImageLoader: @unchecked Sendable {
     // MARK: - Private
 
     private func downloadImage(from url: URL) async -> UIImage? {
-        taskLock.lock()
         if let existing = runningTasks[url] {
-            taskLock.unlock()
             return await existing.value
         }
+
         let task = Task<UIImage?, Never> { [weak self] in
             guard let self = self else { return nil }
             do {
@@ -88,12 +81,10 @@ final class ImageLoader: @unchecked Sendable {
                 return nil
             }
         }
+
         runningTasks[url] = task
-        taskLock.unlock()
         let result = await task.value
-        taskLock.lock()
         runningTasks[url] = nil
-        taskLock.unlock()
         return result
     }
 }
