@@ -10,11 +10,8 @@ struct WallpaperCard: View {
 
     var body: some View {
         imageSection
-        .frame(width: width, height: height)
-        .background(.quaternary)
-        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
-        .contentShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
-        .shadow(color: .black.opacity(0.14), radius: 6, y: 3)
+            .frame(width: width, height: height)
+            .contentShape(Rectangle())
     }
 
     @ViewBuilder
@@ -27,7 +24,7 @@ struct WallpaperCard: View {
             } else {
                 Rectangle()
                     .fill(.quaternary)
-                    .overlay { ProgressView().scaleEffect(0.8) }
+                    .overlay { ProgressView() }
             }
         }
         .frame(width: width, height: height)

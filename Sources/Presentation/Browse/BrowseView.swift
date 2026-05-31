@@ -45,20 +45,14 @@ struct BrowseView: View {
 
     private var browseNavigation: some View {
         NavigationStack {
-            ZStack {
-                Color(uiColor: .systemGroupedBackground).ignoresSafeArea()
-                wallpaperGrid
-            }
+            wallpaperGrid
             .navigationTitle("Wallhaven")
         }
     }
 
     private var searchNavigation: some View {
         NavigationStack {
-            ZStack {
-                Color(uiColor: .systemGroupedBackground).ignoresSafeArea()
-                wallpaperGrid
-            }
+            wallpaperGrid
             .navigationTitle("搜索")
         }
     }
@@ -79,12 +73,12 @@ struct BrowseView: View {
             }
             .overlay(alignment: .bottom) {
                 if let error = viewModel.error {
-                    errorBanner(error)
+                    Text(error.localizedDescription)
+                        .font(.footnote)
+                        .padding()
                 } else if viewModel.isLoading {
                     ProgressView()
-                        .padding(12)
-                        .glassEffect(.regular, in: .rect(cornerRadius: 14))
-                        .padding(.bottom, 12)
+                        .padding()
                 }
             }
         }
@@ -115,26 +109,6 @@ struct BrowseView: View {
         ProgressView()
             .controlSize(.large)
             .frame(maxWidth: .infinity, maxHeight: .infinity)
-    }
-
-    private func errorBanner(_ error: NetworkError) -> some View {
-        HStack(spacing: 10) {
-            Image(systemName: "exclamationmark.triangle.fill")
-            Text(error.localizedDescription)
-                .font(.footnote)
-                .lineLimit(2)
-            Spacer(minLength: 8)
-            Button("重试") {
-                Task { await viewModel.onRefresh() }
-            }
-            .font(.footnote.weight(.semibold))
-            .buttonStyle(.glass)
-        }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 10)
-        .glassEffect(.regular.tint(.red.opacity(0.18)), in: .rect(cornerRadius: 16))
-        .padding(.horizontal)
-        .padding(.bottom, 12)
     }
 }
 
