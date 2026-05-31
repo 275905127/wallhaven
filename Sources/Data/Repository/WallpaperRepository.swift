@@ -11,15 +11,15 @@ final class WallpaperRepository: @unchecked Sendable {
         query: String,
         page: Int,
         sorting: WallhavenSorting,
-        apiKey: String?
+        configuration: WallhavenSourceConfiguration
     ) async throws -> (wallpapers: [Wallpaper], hasMore: Bool) {
         let response = try await api.search(
             query: query,
             page: page,
             sorting: sorting,
-            apiKey: apiKey
+            configuration: configuration
         )
-        let wallpapers = response.data.map { $0.toDomain() }
+        let wallpapers = try response.data.map { try $0.toDomain() }
         return (wallpapers, page < response.meta.lastPage)
     }
 }
@@ -27,11 +27,16 @@ final class WallpaperRepository: @unchecked Sendable {
 // MARK: - DTO → Domain mapping
 
 extension WallpaperDTO {
-    func toDomain() -> Wallpaper {
+    func toDomain() throws -> Wallpaper {
+        guard let thumbnailURL = URL(string: thumbs.large) ?? URL(string: thumbs.original),
+              let fullImageURL = URL(string: path) else {
+            throw NetworkError.invalidURL
+        }
+
         Wallpaper(
             id: id,
-            thumbnailURL: URL(string: thumbs.large) ?? URL(string: thumbs.original)!,
-            fullImageURL: URL(string: path)!,
+            thumbnailURL: thumbnailURL,
+            fullImageURL: fullImageURL,
             title: tags?.prefix(3).map(\.name).joined(separator: ", "),
             author: uploader?.username,
             resolution: resolution,

@@ -7,6 +7,7 @@ struct DetailView: View {
     @Environment(\.dismiss) private var dismiss
     @State private var fullImage: UIImage?
     @State private var isLoading = true
+    @State private var didFailLoading = false
 
     var body: some View {
         NavigationStack {
@@ -19,53 +20,95 @@ struct DetailView: View {
                     .overlay(alignment: .bottom) { infoOverlay }
                 } else if isLoading {
                     ProgressView().tint(.white)
+                } else if didFailLoading {
+                    ContentUnavailableView {
+                        Label("图片加载失败", systemImage: "photo.badge.exclamationmark")
+                    } description: {
+                        Text("请检查网络后重试")
+                    } actions: {
+                        Button("重试") {
+                            Task { await loadFullImage() }
+                        }
+                        .liquidGlassButtonStyle(prominent: true)
+                    }
+                    .foregroundStyle(.white)
                 }
             }
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
-                    Button { dismiss() } label: {
-                        Image(systemName: "xmark.circle.fill").font(.title2).foregroundStyle(.white)
-                    }
+                    detailToolbarButton(systemImage: "xmark") { dismiss() }
                 }
                 ToolbarItem(placement: .topBarTrailing) {
                     HStack(spacing: 16) {
                         ShareLink(item: wallpaper.fullImageURL) {
-                            Image(systemName: "square.and.arrow.up").font(.title2).foregroundStyle(.white)
+                            Image(systemName: "square.and.arrow.up")
+                                .frame(width: 36, height: 36)
                         }
-                        Button { Task { await saveToPhotos() } } label: {
-                            Image(systemName: "square.and.arrow.down").font(.title2).foregroundStyle(.white)
+                        .liquidGlassSurface(cornerRadius: 18, isInteractive: true)
+                        detailToolbarButton(systemImage: "square.and.arrow.down") {
+                            Task { await saveToPhotos() }
                         }
                     }
+                    .font(.headline)
+                    .foregroundStyle(.white)
                 }
             }
-            .task { fullImage = await imageLoader.loadImage(from: wallpaper.fullImageURL); isLoading = false }
+            .task(id: wallpaper.fullImageURL) {
+                await loadFullImage()
+            }
         }
     }
 
     private var infoOverlay: some View {
-        HStack {
-            VStack(alignment: .leading, spacing: 2) {
-                if let title = wallpaper.title {
-                    Text(title).font(.subheadline).fontWeight(.semibold).foregroundStyle(.white).lineLimit(1)
-                }
-                Text("\(wallpaper.resolution) · \(wallpaper.formattedFileSize)")
-                    .font(.caption).foregroundStyle(.white.opacity(0.7))
-            }
-            Spacer()
+        LiquidGlassContainer(spacing: 14) {
             HStack(spacing: 12) {
-                Label(wallpaper.formattedViews, systemImage: "eye")
-                Label("\(wallpaper.favorites)", systemImage: "heart.fill")
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(wallpaper.title ?? wallpaper.categoryDisplay)
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(.white)
+                        .lineLimit(1)
+                    Text("\(wallpaper.resolution) · \(wallpaper.formattedFileSize) · \(wallpaper.purityDisplay)")
+                        .font(.caption)
+                        .foregroundStyle(.white.opacity(0.72))
+                        .lineLimit(1)
+                }
+                Spacer(minLength: 8)
+                HStack(spacing: 10) {
+                    Label(wallpaper.formattedViews, systemImage: "eye")
+                    Label("\(wallpaper.favorites)", systemImage: "heart.fill")
+                }
+                .font(.caption.weight(.medium))
+                .foregroundStyle(.white.opacity(0.76))
             }
-            .font(.caption).foregroundStyle(.white.opacity(0.7))
+            .padding(.horizontal, 16)
+            .padding(.vertical, 12)
+            .liquidGlassSurface(cornerRadius: 20)
+            .padding(.horizontal, 16)
+            .padding(.bottom, 32)
         }
-        .padding(.horizontal, 16).padding(.vertical, 12)
-        .background(.ultraThinMaterial).clipShape(RoundedRectangle(cornerRadius: 20))
-        .padding(.horizontal, 16).padding(.bottom, 32)
     }
 
     private func saveToPhotos() async {
         guard let image = fullImage else { return }
         UIImageWriteToSavedPhotosAlbum(image, nil, nil, nil)
+    }
+
+    private func loadFullImage() async {
+        isLoading = true
+        didFailLoading = false
+        fullImage = await imageLoader.loadImage(from: wallpaper.fullImageURL)
+        didFailLoading = fullImage == nil
+        isLoading = false
+    }
+
+    private func detailToolbarButton(systemImage: String, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Image(systemName: systemImage)
+                .frame(width: 36, height: 36)
+        }
+        .font(.headline)
+        .foregroundStyle(.white)
+        .liquidGlassSurface(cornerRadius: 18, isInteractive: true)
     }
 }
 

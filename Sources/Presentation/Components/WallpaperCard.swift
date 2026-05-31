@@ -7,13 +7,13 @@ struct WallpaperCard: View {
     @State private var image: UIImage?
 
     var body: some View {
-        VStack(spacing: 0) {
+        ZStack(alignment: .bottom) {
             imageSection
             infoBar
         }
-        .background(.ultraThinMaterial)
-        .clipShape(RoundedRectangle(cornerRadius: 12))
-        .shadow(color: .black.opacity(0.1), radius: 4, y: 2)
+        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+        .contentShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+        .shadow(color: .black.opacity(0.14), radius: 6, y: 3)
     }
 
     @ViewBuilder
@@ -29,23 +29,35 @@ struct WallpaperCard: View {
                     .overlay { ProgressView().scaleEffect(0.8) }
             }
         }
-        .frame(minHeight: 180)
+        .frame(minHeight: 210)
         .clipped()
-        .task {
+        .task(id: wallpaper.thumbnailURL) {
+            image = nil
             image = await viewModel.loadImage(from: wallpaper.thumbnailURL)
         }
     }
 
     private var infoBar: some View {
-        HStack(spacing: 4) {
-            if let title = wallpaper.title {
-                Text(title)
-                    .font(.caption2).lineLimit(1)
+        LiquidGlassContainer(spacing: 8) {
+            HStack(spacing: 8) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(wallpaper.title ?? wallpaper.categoryDisplay)
+                        .font(.caption.weight(.semibold))
+                        .lineLimit(1)
+                    Text(wallpaper.resolution)
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                }
+                Spacer(minLength: 4)
+                Label(wallpaper.formattedViews, systemImage: "eye")
+                    .font(.caption2.weight(.medium))
+                    .foregroundStyle(.secondary)
             }
-            Spacer()
-            Image(systemName: "eye").font(.system(size: 9)).foregroundStyle(.secondary)
-            Text(wallpaper.formattedViews).font(.system(size: 10)).foregroundStyle(.secondary)
+            .padding(.horizontal, 10)
+            .padding(.vertical, 8)
+            .liquidGlassSurface(cornerRadius: 12)
+            .padding(8)
         }
-        .padding(.horizontal, 6).padding(.vertical, 5)
     }
 }

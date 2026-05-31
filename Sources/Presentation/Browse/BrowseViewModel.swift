@@ -13,6 +13,11 @@ final class BrowseViewModel {
     var sortingOptions: [WallhavenSorting] { WallhavenSorting.allCases }
     var currentSorting: WallhavenSorting { feedEngine.currentSorting }
     var currentQuery: String { feedEngine.currentQuery }
+    var sourceConfiguration: WallhavenSourceConfiguration { feedEngine.sourceConfiguration }
+    var categoryOptions: [WallhavenCategory] { WallhavenCategory.allCases }
+    var purityOptions: [WallhavenPurity] { WallhavenPurity.allCases }
+    var orderOptions: [WallhavenOrder] { WallhavenOrder.allCases }
+    var topRangeOptions: [WallhavenTopRange] { WallhavenTopRange.allCases }
 
     init(feedEngine: FeedEngine, imageLoader: ImageLoader) {
         self.feedEngine = feedEngine
@@ -20,7 +25,7 @@ final class BrowseViewModel {
     }
 
     func onAppear() async {
-        await feedEngine.refresh()
+        await feedEngine.loadInitialPageIfNeeded()
     }
 
     func onRefresh() async {
@@ -42,6 +47,36 @@ final class BrowseViewModel {
 
     func onSortSelected(_ sorting: WallhavenSorting) async {
         await feedEngine.updateSorting(sorting)
+    }
+
+    func onCategoryToggled(_ category: WallhavenCategory) async {
+        var configuration = sourceConfiguration
+        configuration.toggleCategory(category)
+        await feedEngine.updateSourceConfiguration(configuration)
+    }
+
+    func onPurityToggled(_ purity: WallhavenPurity) async {
+        var configuration = sourceConfiguration
+        configuration.togglePurity(purity)
+        await feedEngine.updateSourceConfiguration(configuration)
+    }
+
+    func onOrderSelected(_ order: WallhavenOrder) async {
+        var configuration = sourceConfiguration
+        configuration.order = order
+        await feedEngine.updateSourceConfiguration(configuration)
+    }
+
+    func onTopRangeSelected(_ topRange: WallhavenTopRange) async {
+        var configuration = sourceConfiguration
+        configuration.topRange = topRange
+        await feedEngine.updateSourceConfiguration(configuration)
+    }
+
+    func onAPIKeyChanged(_ apiKey: String) async {
+        var configuration = sourceConfiguration
+        configuration.setAPIKey(apiKey)
+        await feedEngine.updateSourceConfiguration(configuration)
     }
 
     func prefetchImages(for items: [Wallpaper]) {

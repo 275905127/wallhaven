@@ -31,19 +31,21 @@ extension Endpoint {
         query: String = "",
         page: Int = 1,
         sorting: WallhavenSorting = .toplist,
-        categories: String = "111",
-        purity: String = "100",
-        apiKey: String? = nil
+        configuration: WallhavenSourceConfiguration = WallhavenSourceConfiguration()
     ) -> Endpoint {
         var items: [URLQueryItem] = [
             URLQueryItem(name: "q", value: query),
             URLQueryItem(name: "page", value: String(page)),
             URLQueryItem(name: "sorting", value: sorting.rawValue),
-            URLQueryItem(name: "categories", value: categories),
-            URLQueryItem(name: "purity", value: purity),
+            URLQueryItem(name: "categories", value: configuration.requestCategoryValue),
+            URLQueryItem(name: "purity", value: configuration.requestPurityValue),
+            URLQueryItem(name: "order", value: configuration.order.rawValue),
         ]
-        if let key = apiKey, !key.isEmpty {
-            items.append(URLQueryItem(name: "apikey", value: key))
+        if sorting == .toplist {
+            items.append(URLQueryItem(name: "topRange", value: configuration.topRange.rawValue))
+        }
+        if configuration.hasAPIKey {
+            items.append(URLQueryItem(name: "apikey", value: configuration.trimmedAPIKey))
         }
         return Endpoint(path: "/search", queryItems: items)
     }
