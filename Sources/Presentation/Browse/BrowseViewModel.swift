@@ -3,13 +3,12 @@
 @MainActor
 @Observable
 final class BrowseViewModel {
-    let feedEngine: FeedEngine
+    private let feedEngine: FeedEngine
     let imageLoader: ImageLoader
 
     var wallpapers: [Wallpaper] { feedEngine.wallpapers }
     var isLoading: Bool { feedEngine.isLoading }
     var isRefreshing: Bool { feedEngine.isRefreshing }
-    var hasMore: Bool { feedEngine.hasMore }
     var error: NetworkError? { feedEngine.error }
     var sortingOptions: [WallhavenSorting] { WallhavenSorting.allCases }
     var currentSorting: WallhavenSorting { feedEngine.currentSorting }
@@ -20,25 +19,37 @@ final class BrowseViewModel {
         self.imageLoader = imageLoader
     }
 
-    func refresh() async {
+    func onAppear() async {
         await feedEngine.refresh()
     }
 
-    func loadNextPageIfNeeded(currentItem: Wallpaper) async {
-        guard let index = wallpapers.firstIndex(where: { $0.id == currentItem.id }) else { return }
+    func onRefresh() async {
+        await feedEngine.refresh()
+    }
+
+    func onItemAppear(index: Int) {
         feedEngine.prefetchIfNeeded(currentIndex: index)
     }
 
-    func search(query: String) async {
-        await feedEngine.search(query: query)
+    func onSearchDebounced(query: String, searchTask: inout Task<Void, Never>?) {
+        searchTask?.cancel()
+        searchTask = Task { @MainActor in
+            try? await Task.sleep(nanoseconds: 400_000_000)
+            guard !Task.isCancelled else { return }
+            await feedEngine.search(query: query)
+        }
     }
 
-    func selectSorting(_ sorting: WallhavenSorting) async {
+    func onSortSelected(_ sorting: WallhavenSorting) async {
         await feedEngine.updateSorting(sorting)
     }
 
     func prefetchImages(for items: [Wallpaper]) {
         let urls = items.map(\.thumbnailURL)
-        imageLoader.prefetchImages(urls: urls)
+        Task { await imageLoader.prefetchImages(urls: urls) }
+    }
+
+    func loadImage(from url: URL) async -> UIImage? {
+        await imageLoader.loadImage(from: url)
     }
 }

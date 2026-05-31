@@ -4,23 +4,25 @@
 @Observable
 final class FeedEngine {
     private let repository: WallpaperRepository
-    private let prefetchThreshold = 6
+    private let pagination: PaginationController
+    private let prefetchController: PrefetchController
+    private let dedup: DeduplicationStore
 
     private(set) var wallpapers: [Wallpaper] = []
-    private(set) var currentPage = 0
     private(set) var isLoading = false
     private(set) var isRefreshing = false
-    private(set) var hasMore = true
     private(set) var error: NetworkError?
     private(set) var currentSorting: WallhavenSorting = .toplist
     private(set) var currentQuery = ""
 
-    private var seenIDs = Set<String>()
-    private var isLoadingNextPage = false
+    var hasMore: Bool { pagination.hasMore }
     private var currentTask: Task<Void, Never>?
 
     init(repository: WallpaperRepository = WallpaperRepository()) {
         self.repository = repository
+        self.pagination = PaginationController()
+        self.prefetchController = PrefetchController(threshold: 6)
+        self.dedup = DeduplicationStore()
     }
 
     // MARK: - Public API
@@ -29,63 +31,21 @@ final class FeedEngine {
         currentTask?.cancel()
         isRefreshing = true
         error = nil
-        currentPage = 0
-        seenIDs.removeAll()
-        hasMore = true
+        resetState()
 
         currentTask = Task { [weak self] in
             guard let self = self else { return }
-            do {
-                let result = try await self.repository.fetchWallpapers(
-                    query: self.currentQuery,
-                    page: 1,
-                    sorting: self.currentSorting,
-                    apiKey: nil
-                )
-                guard !Task.isCancelled else { return }
-                self.currentPage = 1
-                self.hasMore = result.hasMore
-                self.seenIDs = Set(result.wallpapers.map(\.id))
-                self.wallpapers = result.wallpapers
-                self.error = nil
-            } catch let error as NetworkError {
-                guard !Task.isCancelled else { return }
-                self.error = error
-            } catch {
-                guard !Task.isCancelled else { return }
-                self.error = .invalidResponse
-            }
+            await self.executeFetch(page: 1)
             self.isRefreshing = false
         }
         await currentTask?.value
     }
 
     func loadNextPage() async {
-        guard !isLoadingNextPage, hasMore, !isRefreshing else { return }
-        isLoadingNextPage = true
+        guard pagination.hasMore, !isLoading, !isRefreshing else { return }
         isLoading = true
         error = nil
-
-        let nextPage = currentPage + 1
-        do {
-            let result = try await repository.fetchWallpapers(
-                query: currentQuery,
-                page: nextPage,
-                sorting: currentSorting,
-                apiKey: nil
-            )
-            let newItems = result.wallpapers.filter { !seenIDs.contains($0.id) }
-            seenIDs.formUnion(newItems.map(\.id))
-            currentPage = nextPage
-            hasMore = result.hasMore
-            wallpapers.append(contentsOf: newItems)
-            error = nil
-        } catch let error as NetworkError {
-            self.error = error
-        } catch {
-            self.error = .invalidResponse
-        }
-        isLoadingNextPage = false
+        await executeFetch(page: pagination.nextPage)
         isLoading = false
     }
 
@@ -101,10 +61,49 @@ final class FeedEngine {
     }
 
     func prefetchIfNeeded(currentIndex: Int) {
-        let threshold = wallpapers.count - prefetchThreshold
-        guard currentIndex >= threshold, hasMore, !isLoadingNextPage else { return }
+        guard prefetchController.shouldPrefetch(currentIndex: currentIndex, totalCount: wallpapers.count) else { return }
         Task { [weak self] in
             await self?.loadNextPage()
+            await self?.prefetchController.prefetchCompleted()
+        }
+    }
+
+    func prefetchImages(for urls: [URL], using loader: ImageLoader) {
+        Task { await loader.prefetchImages(urls: urls) }
+    }
+
+    // MARK: - Private
+
+    private func resetState() {
+        pagination.reset()
+        prefetchController.reset()
+        dedup.reset()
+    }
+
+    private func executeFetch(page: Int) async {
+        do {
+            let result = try await repository.fetchWallpapers(
+                query: currentQuery, page: page,
+                sorting: currentSorting, apiKey: nil
+            )
+            guard !Task.isCancelled else { return }
+
+            let newItems = dedup.filterNew(from: result.wallpapers)
+            dedup.insertBatch(newItems.map(\.id))
+            pagination.markPageLoaded(page: page, hasMore: result.hasMore)
+
+            if page == 1 {
+                wallpapers = newItems
+            } else {
+                wallpapers.append(contentsOf: newItems)
+            }
+            error = nil
+        } catch let error as NetworkError {
+            guard !Task.isCancelled else { return }
+            self.error = error
+        } catch {
+            guard !Task.isCancelled else { return }
+            self.error = .invalidResponse
         }
     }
 }

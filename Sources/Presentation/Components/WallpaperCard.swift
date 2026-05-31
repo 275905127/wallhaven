@@ -2,7 +2,7 @@
 
 struct WallpaperCard: View {
     let wallpaper: Wallpaper
-    let imageLoader: ImageLoader
+    let viewModel: BrowseViewModel
 
     @State private var image: UIImage?
 
@@ -32,7 +32,7 @@ struct WallpaperCard: View {
         .frame(minHeight: 180)
         .clipped()
         .task {
-            image = await imageLoader.loadImage(from: wallpaper.thumbnailURL)
+            image = await viewModel.loadImage(from: wallpaper.thumbnailURL)
         }
     }
 
@@ -40,18 +40,12 @@ struct WallpaperCard: View {
         HStack(spacing: 4) {
             if let title = wallpaper.title {
                 Text(title)
-                    .font(.caption2)
-                    .lineLimit(1)
+                    .font(.caption2).lineLimit(1)
             }
             Spacer()
-            Image(systemName: "eye")
-                .font(.system(size: 9))
-                .foregroundStyle(.secondary)
-            Text(wallpaper.formattedViews)
-                .font(.system(size: 10))
-                .foregroundStyle(.secondary)
+            Image(systemName: "eye").font(.system(size: 9)).foregroundStyle(.secondary)
+            Text(wallpaper.formattedViews).font(.system(size: 10)).foregroundStyle(.secondary)
         }
-        .padding(.horizontal, 6)
-        .padding(.vertical, 5)
+        .padding(.horizontal, 6).padding(.vertical, 5)
     }
 }

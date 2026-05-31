@@ -5,11 +5,14 @@ final class DiskImageCache {
     private let fileManager: FileManager
     private let cacheDirectory: URL
     private let maxCacheSize: Int
+    private let ttl: TimeInterval
     private let ioQueue = DispatchQueue(label: "com.wallhaven.diskcache", qos: .utility)
+    private(set) var stats = CacheStats()
 
-    init(maxCacheSize: Int = 500 * 1024 * 1024) {
+    init(maxCacheSize: Int = 500 * 1024 * 1024, ttl: TimeInterval = 3600) {
         self.fileManager = FileManager.default
         self.maxCacheSize = maxCacheSize
+        self.ttl = ttl
         let caches = fileManager.urls(for: .cachesDirectory, in: .userDomainMask).first!
         self.cacheDirectory = caches.appendingPathComponent("WallhavenImageCache")
         try? fileManager.createDirectory(at: cacheDirectory, withIntermediateDirectories: true)
@@ -18,9 +21,22 @@ final class DiskImageCache {
 
     func image(for url: URL) -> UIImage? {
         let fileURL = cacheFileURL(for: url)
-        guard fileManager.fileExists(atPath: fileURL.path),
-              let data = try? Data(contentsOf: fileURL),
-              let image = UIImage(data: data) else { return nil }
+        guard fileManager.fileExists(atPath: fileURL.path) else {
+            stats.misses += 1
+            return nil
+        }
+        if let modDate = try? fileURL.resourceValues(forKeys: [.contentModificationDateKey]).contentModificationDate,
+           Date().timeIntervalSince(modDate) > ttl {
+            try? fileManager.removeItem(at: fileURL)
+            stats.misses += 1
+            return nil
+        }
+        guard let data = try? Data(contentsOf: fileURL),
+              let image = UIImage(data: data) else {
+            stats.misses += 1
+            return nil
+        }
+        stats.hits += 1
         updateAccessDate(for: fileURL)
         return image
     }
@@ -64,18 +80,16 @@ final class DiskImageCache {
                 includingPropertiesForKeys: [.fileSizeKey, .contentAccessDateKey],
                 options: .skipsHiddenFiles
             ) else { return }
-
             let totalSize = contents.reduce(0) { sum, url in
                 sum + ((try? url.resourceValues(forKeys: [.fileSizeKey]).fileSize) ?? 0)
             }
             guard totalSize > self.maxCacheSize else { return }
-
             let sorted = contents.sorted { a, b in
                 let dateA = (try? a.resourceValues(forKeys: [.contentAccessDateKey]).contentAccessDate) ?? .distantPast
                 let dateB = (try? b.resourceValues(forKeys: [.contentAccessDateKey]).contentAccessDate) ?? .distantPast
                 return dateA < dateB
             }
-            var freed: Int = 0
+            var freed = 0
             let target = self.maxCacheSize / 2
             for url in sorted {
                 guard totalSize - freed > target else { break }
@@ -86,4 +100,3 @@ final class DiskImageCache {
         }
     }
 }
-
