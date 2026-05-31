@@ -16,18 +16,10 @@ struct BrowseView: View {
             ZStack {
                 Color(uiColor: .systemGroupedBackground).ignoresSafeArea()
                 wallpaperGrid
-                bottomFloatingBar
             }
             .navigationTitle("Wallhaven")
-            .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button {
-                        presentedSheet = .filters
-                    } label: {
-                        Image(systemName: "slider.horizontal.3")
-                    }
-                    .liquidGlassButtonStyle()
-                }
+            .safeAreaInset(edge: .bottom, spacing: 0) {
+                bottomFloatingBar
             }
             .searchable(text: $searchText, placement: .navigationBarDrawer(displayMode: .always), prompt: "搜索壁纸...")
             .onChange(of: searchText) { _, newValue in
@@ -71,7 +63,7 @@ struct BrowseView: View {
                     ProgressView()
                         .padding(12)
                         .liquidGlassSurface(cornerRadius: 14)
-                        .padding(.bottom, 86)
+                        .padding(.bottom, 12)
                 }
             }
         }
@@ -120,48 +112,91 @@ struct BrowseView: View {
         .padding(.vertical, 10)
         .liquidGlassSurface(cornerRadius: 16, tint: .red.opacity(0.18))
         .padding(.horizontal)
-        .padding(.bottom, 86)
+        .padding(.bottom, 12)
     }
 
     private var bottomFloatingBar: some View {
-        VStack {
-            Spacer()
-            LiquidGlassContainer(spacing: 18) {
-                HStack(spacing: 18) {
-                    Button {
-                        Task { await viewModel.onRefresh() }
-                    } label: {
-                        Image(systemName: "arrow.clockwise")
-                            .frame(width: 42, height: 42)
-                    }
-                    .liquidGlassButtonStyle()
-
-                    Button {
-                        presentedSheet = .sources
-                    } label: {
-                        Label(viewModel.activeSourceEngine.name, systemImage: viewModel.activeSourceEngine.kind.systemImage)
-                            .lineLimit(1)
-                            .frame(maxWidth: 168)
-                    }
-                    .liquidGlassButtonStyle(prominent: true)
-
-                    Button {
-                        presentedSheet = .filters
-                    } label: {
-                        Image(systemName: "slider.horizontal.3")
-                            .frame(width: 42, height: 42)
-                    }
-                    .liquidGlassButtonStyle()
+        LiquidGlassContainer(spacing: 10) {
+            HStack(spacing: 6) {
+                BottomBarButton(title: "刷新", systemImage: "arrow.clockwise") {
+                    Task { await viewModel.onRefresh() }
                 }
-                .font(.headline)
-                .padding(.horizontal, 14)
-                .padding(.vertical, 10)
-                .liquidGlassSurface(cornerRadius: 28)
+
+                BottomSourceButton(
+                    sourceName: viewModel.activeSourceEngine.name,
+                    systemImage: viewModel.activeSourceEngine.kind.systemImage
+                ) {
+                    presentedSheet = .sources
+                }
+
+                BottomBarButton(title: "筛选", systemImage: "slider.horizontal.3") {
+                    presentedSheet = .filters
+                }
             }
-            .padding(.horizontal, 18)
-            .padding(.bottom, 16)
+            .padding(6)
+            .frame(maxWidth: 430)
+            .liquidGlassSurface(cornerRadius: 32)
         }
-        .ignoresSafeArea(.keyboard)
+        .padding(.horizontal, 18)
+        .padding(.top, 6)
+        .padding(.bottom, 8)
+        .background(.clear)
+    }
+}
+
+private struct BottomBarButton: View {
+    let title: String
+    let systemImage: String
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            VStack(spacing: 3) {
+                Image(systemName: systemImage)
+                    .font(.system(size: 19, weight: .semibold))
+                Text(title)
+                    .font(.caption2.weight(.medium))
+            }
+            .frame(maxWidth: .infinity)
+            .frame(height: 54)
+            .foregroundStyle(.secondary)
+            .contentShape(RoundedRectangle(cornerRadius: 26, style: .continuous))
+        }
+        .buttonStyle(.plain)
+        .liquidGlassSurface(cornerRadius: 26, isInteractive: true)
+    }
+}
+
+private struct BottomSourceButton: View {
+    let sourceName: String
+    let systemImage: String
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: 9) {
+                Image(systemName: systemImage)
+                    .font(.system(size: 19, weight: .semibold))
+                    .frame(width: 22)
+                VStack(alignment: .leading, spacing: 1) {
+                    Text("图源")
+                        .font(.caption2.weight(.medium))
+                        .foregroundStyle(.secondary)
+                    Text(sourceName)
+                        .font(.footnote.weight(.semibold))
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.78)
+                }
+                Spacer(minLength: 0)
+            }
+            .frame(maxWidth: .infinity)
+            .frame(height: 54)
+            .padding(.horizontal, 12)
+            .contentShape(RoundedRectangle(cornerRadius: 26, style: .continuous))
+        }
+        .buttonStyle(.plain)
+        .foregroundStyle(.primary)
+        .liquidGlassSurface(cornerRadius: 26, tint: .accentColor.opacity(0.18), isInteractive: true)
     }
 }
 

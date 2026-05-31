@@ -1,4 +1,5 @@
-﻿import Foundation
+﻿import CoreGraphics
+import Foundation
 
 struct Wallpaper: Identifiable, Hashable, Sendable {
     let id: String
@@ -54,5 +55,14 @@ struct Wallpaper: Identifiable, Hashable, Sendable {
             return String(format: "%.1f万", Double(views) / 10000)
         }
         return "\(views)"
+    }
+
+    var pixelSize: CGSize? {
+        let components = resolution
+            .lowercased()
+            .split(separator: "x", maxSplits: 1)
+            .compactMap { Double(String($0).trimmingCharacters(in: .whitespacesAndNewlines)) }
+        guard components.count == 2 else { return nil }
+        return CGSize(width: CGFloat(components[0]), height: CGFloat(components[1]))
     }
 }
