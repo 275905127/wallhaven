@@ -17,23 +17,17 @@ struct DetailView: View {
                     ZoomableScrollView {
                         Image(uiImage: image).resizable().aspectRatio(contentMode: .fit)
                     }
-                    .overlay(alignment: .bottom) { infoOverlay }
+                    .safeAreaInset(edge: .bottom, spacing: 0) {
+                        infoOverlay
+                    }
                 } else if isLoading {
                     ProgressView().tint(.white)
                 } else if didFailLoading {
-                    ContentUnavailableView {
-                        Label("图片加载失败", systemImage: "photo.badge.exclamationmark")
-                    } description: {
-                        Text("请检查网络后重试")
-                    } actions: {
-                        Button("重试") {
-                            Task { await loadFullImage() }
-                        }
-                        .liquidGlassButtonStyle(prominent: true)
-                    }
-                    .foregroundStyle(.white)
+                    loadingErrorView
                 }
             }
+            .toolbarBackground(.hidden, for: .navigationBar)
+            .toolbarColorScheme(.dark, for: .navigationBar)
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
                     detailToolbarButton(systemImage: "xmark") { dismiss() }
@@ -59,9 +53,23 @@ struct DetailView: View {
         }
     }
 
+    private var loadingErrorView: some View {
+        ContentUnavailableView {
+            Label("图片加载失败", systemImage: "photo.badge.exclamationmark")
+        } description: {
+            Text("请检查网络后重试")
+        } actions: {
+            Button("重试") {
+                Task { await loadFullImage() }
+            }
+            .buttonStyle(.glassProminent)
+        }
+        .foregroundStyle(.white)
+    }
+
     private var infoOverlay: some View {
-        LiquidGlassContainer(spacing: 14) {
-            HStack(spacing: 12) {
+        GlassEffectContainer(spacing: 18) {
+            VStack(alignment: .leading, spacing: 10) {
                 VStack(alignment: .leading, spacing: 4) {
                     Text(wallpaper.title ?? wallpaper.categoryDisplay)
                         .font(.subheadline.weight(.semibold))
@@ -72,20 +80,33 @@ struct DetailView: View {
                         .foregroundStyle(.white.opacity(0.72))
                         .lineLimit(1)
                 }
-                Spacer(minLength: 8)
-                HStack(spacing: 10) {
-                    Label(wallpaper.formattedViews, systemImage: "eye")
-                    Label("\(wallpaper.favorites)", systemImage: "heart.fill")
+
+                ViewThatFits(in: .horizontal) {
+                    HStack(spacing: 8) {
+                        metricLabel(wallpaper.formattedViews, systemImage: "eye")
+                        metricLabel("\(wallpaper.favorites)", systemImage: "heart.fill")
+                    }
+
+                    VStack(alignment: .leading, spacing: 6) {
+                        metricLabel(wallpaper.formattedViews, systemImage: "eye")
+                        metricLabel("\(wallpaper.favorites)", systemImage: "heart.fill")
+                    }
                 }
-                .font(.caption.weight(.medium))
-                .foregroundStyle(.white.opacity(0.76))
             }
             .padding(.horizontal, 16)
-            .padding(.vertical, 12)
-            .liquidGlassSurface(cornerRadius: 20)
+            .padding(.vertical, 14)
+            .frame(maxWidth: 560, alignment: .leading)
+            .glassEffect(.regular.tint(.black.opacity(0.18)), in: .rect(cornerRadius: 24))
             .padding(.horizontal, 16)
-            .padding(.bottom, 32)
+            .padding(.bottom, 10)
         }
+    }
+
+    private func metricLabel(_ text: String, systemImage: String) -> some View {
+        Label(text, systemImage: systemImage)
+            .font(.caption.weight(.medium))
+            .foregroundStyle(.white.opacity(0.78))
+            .lineLimit(1)
     }
 
     private func saveToPhotos() async {

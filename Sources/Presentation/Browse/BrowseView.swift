@@ -83,7 +83,7 @@ struct BrowseView: View {
                 } else if viewModel.isLoading {
                     ProgressView()
                         .padding(12)
-                        .liquidGlassSurface(cornerRadius: 14)
+                        .glassEffect(.regular, in: .rect(cornerRadius: 14))
                         .padding(.bottom, 12)
                 }
             }
@@ -107,7 +107,7 @@ struct BrowseView: View {
             Button("重试") {
                 Task { await viewModel.onRefresh() }
             }
-            .liquidGlassButtonStyle(prominent: true)
+            .buttonStyle(.glassProminent)
         }
     }
 
@@ -132,7 +132,7 @@ struct BrowseView: View {
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 10)
-        .liquidGlassSurface(cornerRadius: 16, tint: .red.opacity(0.18))
+        .glassEffect(.regular.tint(.red.opacity(0.18)), in: .rect(cornerRadius: 16))
         .padding(.horizontal)
         .padding(.bottom, 12)
     }
