@@ -105,4 +105,8 @@ final class BrowseViewModel {
     func loadImage(from url: URL) async -> UIImage? {
         await imageLoader.loadImage(from: url)
     }
+
+    func loadThumbnail(from url: URL, targetPixelSize: CGSize) async -> UIImage? {
+        await imageLoader.loadImage(from: url, targetPixelSize: targetPixelSize)
+    }
 }

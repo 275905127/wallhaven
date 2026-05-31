@@ -125,6 +125,9 @@ final class FeedEngine {
             if let index = sourceEngines.firstIndex(where: { $0.name == sourceEngine.name }) {
                 var updatedSource = sourceEngine
                 updatedSource.id = sourceEngines[index].id
+                if updatedSource.trimmedAPIKey.isEmpty {
+                    updatedSource.apiKey = sourceEngines[index].apiKey
+                }
                 sourceEngines[index] = updatedSource
                 firstImportedID = firstImportedID ?? updatedSource.id
             } else {
@@ -140,6 +143,7 @@ final class FeedEngine {
     func deleteSourceEngine(_ sourceEngine: WallpaperSourceEngine) async {
         guard sourceEngines.count > 1 else { return }
         sourceEngines.removeAll { $0.id == sourceEngine.id }
+        sourceEngineStore.deleteSecrets(for: sourceEngine)
         if activeSourceEngineID == sourceEngine.id {
             activeSourceEngineID = sourceEngines.first?.id ?? WallpaperSourceEngine.wallhavenTemplateID
         }

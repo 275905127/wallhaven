@@ -111,6 +111,7 @@ private struct SourceConfigurationImportSheet: View {
 
     @State private var configurationText = defaultConfigurationText
     @State private var errorMessage: String?
+    @State private var previews: [WallpaperSourcePreview] = []
 
     let onImport: ([WallpaperSourceEngine]) -> Void
 
@@ -123,10 +124,21 @@ private struct SourceConfigurationImportSheet: View {
                         .textInputAutocapitalization(.never)
                         .autocorrectionDisabled()
                         .frame(minHeight: 360)
+                        .onChange(of: configurationText) { _, _ in
+                            updatePreview()
+                        }
                 } header: {
                     Text("JSON 配置")
                 } footer: {
                     Text("支持单个对象或数组。导入同名图源会覆盖原配置。")
+                }
+
+                if !previews.isEmpty {
+                    Section("预览") {
+                        ForEach(previews) { preview in
+                            SourcePreviewRow(preview: preview)
+                        }
+                    }
                 }
 
                 if let errorMessage {
@@ -155,6 +167,17 @@ private struct SourceConfigurationImportSheet: View {
             }
         }
         .presentationDetents([.large])
+        .task {
+            updatePreview()
+        }
+    }
+
+    private func updatePreview() {
+        do {
+            previews = try WallpaperSourceImporter.previewSources(from: configurationText)
+        } catch {
+            previews = []
+        }
     }
 
     private static let defaultConfigurationText = """
@@ -213,4 +236,32 @@ private struct SourceConfigurationImportSheet: View {
       }
     ]
     """
+}
+
+private struct SourcePreviewRow: View {
+    let preview: WallpaperSourcePreview
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack {
+                Text(preview.name)
+                Spacer()
+                if preview.usesAPIKey {
+                    Image(systemName: "key.fill")
+                        .foregroundStyle(.secondary)
+                }
+                if preview.supportsSearch {
+                    Image(systemName: "magnifyingglass")
+                        .foregroundStyle(.secondary)
+                }
+            }
+            Text(preview.endpoint)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
+            Text(preview.type)
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+        }
+    }
 }

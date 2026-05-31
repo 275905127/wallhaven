@@ -20,7 +20,11 @@ final class DiskImageCache {
     }
 
     func image(for url: URL) -> UIImage? {
-        let fileURL = cacheFileURL(for: url)
+        image(forKey: url.absoluteString)
+    }
+
+    func image(forKey key: String) -> UIImage? {
+        let fileURL = cacheFileURL(forKey: key)
         guard fileManager.fileExists(atPath: fileURL.path) else {
             stats.misses += 1
             return nil
@@ -42,9 +46,13 @@ final class DiskImageCache {
     }
 
     func storeImage(_ image: UIImage, for url: URL) {
+        storeImage(image, forKey: url.absoluteString)
+    }
+
+    func storeImage(_ image: UIImage, forKey key: String) {
         ioQueue.async { [weak self] in
             guard let self = self else { return }
-            let fileURL = self.cacheFileURL(for: url)
+            let fileURL = self.cacheFileURL(forKey: key)
             if let data = image.jpegData(compressionQuality: 0.85) {
                 try? data.write(to: fileURL, options: .atomic)
                 self.performCleanupIfNeeded()
@@ -63,7 +71,11 @@ final class DiskImageCache {
     // MARK: - Private
 
     private func cacheFileURL(for url: URL) -> URL {
-        let hash = SHA256.hash(data: Data(url.absoluteString.utf8))
+        cacheFileURL(forKey: url.absoluteString)
+    }
+
+    private func cacheFileURL(forKey key: String) -> URL {
+        let hash = SHA256.hash(data: Data(key.utf8))
         let filename = hash.compactMap { String(format: "%02x", $0) }.joined()
         return cacheDirectory.appendingPathComponent(filename)
     }

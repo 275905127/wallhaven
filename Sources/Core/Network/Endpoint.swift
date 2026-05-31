@@ -4,11 +4,21 @@ struct Endpoint {
     let path: String
     let queryItems: [URLQueryItem]
     let baseURL: String
+    let method: String
+    let headers: [String: String]
 
-    init(baseURL: String = "https://wallhaven.cc/api/v1", path: String, queryItems: [URLQueryItem] = []) {
+    init(
+        baseURL: String = "https://wallhaven.cc/api/v1",
+        path: String,
+        queryItems: [URLQueryItem] = [],
+        method: String = "GET",
+        headers: [String: String] = [:]
+    ) {
         self.baseURL = baseURL
         self.path = path
         self.queryItems = queryItems
+        self.method = method
+        self.headers = headers
     }
 
     func buildURLRequest() throws -> URLRequest {
@@ -20,8 +30,12 @@ struct Endpoint {
             throw NetworkError.invalidURL
         }
         var request = URLRequest(url: url)
+        request.httpMethod = method.isEmpty ? "GET" : method
         request.timeoutInterval = 30
         request.cachePolicy = .reloadIgnoringLocalCacheData
+        for (name, value) in headers where !name.isEmpty && !value.isEmpty {
+            request.setValue(value, forHTTPHeaderField: name)
+        }
         return request
     }
 }
@@ -47,10 +61,16 @@ extension Endpoint {
         if sorting == .toplist {
             items.append(URLQueryItem(name: "topRange", value: configuration.topRange.rawValue))
         }
-        if hasAPIKey {
+        if hasAPIKey, sourceEngine.request.apiKeyPlacement == .query {
             items.append(URLQueryItem(name: "apikey", value: apiKey))
         }
-        return Endpoint(baseURL: sourceEngine.request.normalizedBaseURL, path: sourceEngine.request.pathTemplate, queryItems: items)
+        return Endpoint(
+            baseURL: sourceEngine.request.normalizedBaseURL,
+            path: sourceEngine.request.pathTemplate,
+            queryItems: items,
+            method: sourceEngine.request.method,
+            headers: sourceEngine.request.headerFields(apiKey: apiKey)
+        )
     }
 
     static func wallpaperDetail(id: String, apiKey: String? = nil) -> Endpoint {

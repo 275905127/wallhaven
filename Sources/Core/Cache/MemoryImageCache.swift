@@ -11,8 +11,8 @@ struct CacheStats {
 }
 
 final class MemoryImageCache {
-    private let cache = NSCache<NSURL, CacheEntry>()
-    private var accessOrder: [NSURL] = []
+    private let cache = NSCache<NSString, CacheEntry>()
+    private var accessOrder: [NSString] = []
     private let maxCount: Int
     let ttl: TimeInterval
     private(set) var stats = CacheStats()
@@ -25,31 +25,43 @@ final class MemoryImageCache {
     }
 
     func image(for url: URL) -> UIImage? {
-        let key = url as NSURL
-        guard let entry = cache.object(forKey: key) else {
+        image(forKey: url.absoluteString)
+    }
+
+    func image(forKey key: String) -> UIImage? {
+        let cacheKey = key as NSString
+        guard let entry = cache.object(forKey: cacheKey) else {
             stats.misses += 1
             return nil
         }
         if Date().timeIntervalSince(entry.createdAt) > ttl {
-            removeImage(for: url)
+            removeImage(forKey: key)
             stats.misses += 1
             return nil
         }
         stats.hits += 1
-        touchAccessOrder(key)
+        touchAccessOrder(cacheKey)
         return entry.image
     }
 
     func setImage(_ image: UIImage, for url: URL) {
-        let key = url as NSURL
+        setImage(image, forKey: url.absoluteString)
+    }
+
+    func setImage(_ image: UIImage, forKey key: String) {
+        let key = key as NSString
         let entry = CacheEntry(image: image, createdAt: Date())
-        cache.setObject(entry, forKey: key)
+        cache.setObject(entry, forKey: key, cost: image.memoryCost)
         touchAccessOrder(key)
         evictIfNeeded()
     }
 
     func removeImage(for url: URL) {
-        let key = url as NSURL
+        removeImage(forKey: url.absoluteString)
+    }
+
+    func removeImage(forKey key: String) {
+        let key = key as NSString
         cache.removeObject(forKey: key)
         accessOrder.removeAll { $0 == key }
     }
@@ -61,7 +73,7 @@ final class MemoryImageCache {
 
     // MARK: Private
 
-    private func touchAccessOrder(_ key: NSURL) {
+    private func touchAccessOrder(_ key: NSString) {
         accessOrder.removeAll { $0 == key }
         accessOrder.append(key)
     }
@@ -71,6 +83,13 @@ final class MemoryImageCache {
             let oldest = accessOrder.removeFirst()
             cache.removeObject(forKey: oldest)
         }
+    }
+}
+
+private extension UIImage {
+    var memoryCost: Int {
+        guard let cgImage else { return 1 }
+        return max(1, cgImage.bytesPerRow * cgImage.height)
     }
 }
 

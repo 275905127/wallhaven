@@ -1,4 +1,5 @@
-﻿import SwiftUI
+import Photos
+import SwiftUI
 
 struct DetailView: View {
     let wallpaper: Wallpaper
@@ -8,6 +9,7 @@ struct DetailView: View {
     @State private var fullImage: UIImage?
     @State private var isLoading = true
     @State private var didFailLoading = false
+    @State private var saveMessage: SaveMessage?
 
     var body: some View {
         NavigationStack {
@@ -63,12 +65,29 @@ struct DetailView: View {
             .task(id: wallpaper.fullImageURL) {
                 await loadFullImage()
             }
+            .alert(item: $saveMessage) { message in
+                Alert(
+                    title: Text(message.title),
+                    message: Text(message.message),
+                    dismissButton: .default(Text("好"))
+                )
+            }
         }
     }
 
     private func saveToPhotos() async {
-        guard let image = fullImage else { return }
-        UIImageWriteToSavedPhotosAlbum(image, nil, nil, nil)
+        guard let image = fullImage else {
+            saveMessage = SaveMessage(title: "无法保存", message: "图片还没有加载完成。")
+            return
+        }
+        do {
+            try await PHPhotoLibrary.shared().performChanges {
+                PHAssetChangeRequest.creationRequestForAsset(from: image)
+            }
+            saveMessage = SaveMessage(title: "已保存", message: "图片已保存到照片。")
+        } catch {
+            saveMessage = SaveMessage(title: "保存失败", message: error.localizedDescription)
+        }
     }
 
     private func loadFullImage() async {
@@ -78,35 +97,55 @@ struct DetailView: View {
         didFailLoading = fullImage == nil
         isLoading = false
     }
+}
 
+private struct SaveMessage: Identifiable {
+    let id = UUID()
+    let title: String
+    let message: String
 }
 
 struct ZoomableScrollView<Content: View>: UIViewRepresentable {
     @ViewBuilder let content: () -> Content
+
     func makeUIView(context: Context) -> UIScrollView {
-        let sv = UIScrollView(); sv.delegate = context.coordinator
-        sv.maximumZoomScale = 5; sv.minimumZoomScale = 1
-        sv.showsHorizontalScrollIndicator = false; sv.showsVerticalScrollIndicator = false
-        sv.bouncesZoom = true
+        let scrollView = UIScrollView()
+        scrollView.delegate = context.coordinator
+        scrollView.maximumZoomScale = 5
+        scrollView.minimumZoomScale = 1
+        scrollView.showsHorizontalScrollIndicator = false
+        scrollView.showsVerticalScrollIndicator = false
+        scrollView.bouncesZoom = true
+
         let host = UIHostingController(rootView: content())
-        host.view.translatesAutoresizingMaskIntoConstraints = false; host.view.backgroundColor = .clear
-        sv.addSubview(host.view)
+        host.view.translatesAutoresizingMaskIntoConstraints = false
+        host.view.backgroundColor = .clear
+        scrollView.addSubview(host.view)
         NSLayoutConstraint.activate([
-            host.view.topAnchor.constraint(equalTo: sv.contentLayoutGuide.topAnchor),
-            host.view.leadingAnchor.constraint(equalTo: sv.contentLayoutGuide.leadingAnchor),
-            host.view.trailingAnchor.constraint(equalTo: sv.contentLayoutGuide.trailingAnchor),
-            host.view.bottomAnchor.constraint(equalTo: sv.contentLayoutGuide.bottomAnchor),
-            host.view.widthAnchor.constraint(equalTo: sv.frameLayoutGuide.widthAnchor),
-            host.view.heightAnchor.constraint(equalTo: sv.frameLayoutGuide.heightAnchor),
+            host.view.topAnchor.constraint(equalTo: scrollView.contentLayoutGuide.topAnchor),
+            host.view.leadingAnchor.constraint(equalTo: scrollView.contentLayoutGuide.leadingAnchor),
+            host.view.trailingAnchor.constraint(equalTo: scrollView.contentLayoutGuide.trailingAnchor),
+            host.view.bottomAnchor.constraint(equalTo: scrollView.contentLayoutGuide.bottomAnchor),
+            host.view.widthAnchor.constraint(equalTo: scrollView.frameLayoutGuide.widthAnchor),
+            host.view.heightAnchor.constraint(equalTo: scrollView.frameLayoutGuide.heightAnchor)
         ])
-        context.coordinator.hostingController = host; return sv
+        context.coordinator.hostingController = host
+        return scrollView
     }
+
     func updateUIView(_ uiView: UIScrollView, context: Context) {
         context.coordinator.hostingController?.rootView = content()
     }
-    func makeCoordinator() -> Coordinator { Coordinator() }
-    class Coordinator: NSObject, UIScrollViewDelegate {
+
+    func makeCoordinator() -> Coordinator {
+        Coordinator()
+    }
+
+    final class Coordinator: NSObject, UIScrollViewDelegate {
         var hostingController: UIHostingController<Content>?
-        func viewForZooming(in scrollView: UIScrollView) -> UIView? { hostingController?.view }
+
+        func viewForZooming(in scrollView: UIScrollView) -> UIView? {
+            hostingController?.view
+        }
     }
 }

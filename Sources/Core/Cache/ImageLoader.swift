@@ -1,10 +1,11 @@
-﻿import UIKit
+import ImageIO
+import UIKit
 
 actor ImageLoader {
     private let memoryCache: MemoryImageCache
     private let diskCache: DiskImageCache
     private let urlSession: URLSession
-    private var runningTasks: [URL: Task<UIImage?, Never>] = [:]
+    private var runningTasks: [String: Task<UIImage?, Never>] = [:]
 
     var memoryStats: CacheStats { memoryCache.stats }
     var diskStats: CacheStats { diskCache.stats }
@@ -25,21 +26,22 @@ actor ImageLoader {
     }
 
     func loadImage(from url: URL) async -> UIImage? {
-        // 1. Memory cache (fast path)
-        if let cached = memoryCache.image(for: url) {
+        await loadImage(from: url, targetPixelSize: nil)
+    }
+
+    func loadImage(from url: URL, targetPixelSize: CGSize?) async -> UIImage? {
+        let cacheKey = cacheKey(for: url, targetPixelSize: targetPixelSize)
+        if let cached = memoryCache.image(forKey: cacheKey) {
             return cached
         }
-        // 2. Disk cache
-        if let diskImage = diskCache.image(for: url) {
-            memoryCache.setImage(diskImage, for: url)
+        if let diskImage = diskCache.image(forKey: cacheKey) {
+            memoryCache.setImage(diskImage, forKey: cacheKey)
             return diskImage
         }
-        // 3. Request coalescing: reuse in-flight task
-        if let existing = runningTasks[url] {
+        if let existing = runningTasks[cacheKey] {
             return await existing.value
         }
-        // 4. Download
-        return await downloadImage(from: url)
+        return await downloadImage(from: url, cacheKey: cacheKey, targetPixelSize: targetPixelSize)
     }
 
     func prefetchImages(urls: [URL]) {
@@ -52,8 +54,9 @@ actor ImageLoader {
 
     func cancelPrefetch(for urls: [URL]) {
         for url in urls {
-            runningTasks[url]?.cancel()
-            runningTasks[url] = nil
+            let key = cacheKey(for: url, targetPixelSize: nil)
+            runningTasks[key]?.cancel()
+            runningTasks[key] = nil
         }
     }
 
@@ -66,32 +69,58 @@ actor ImageLoader {
         diskCache.removeAll()
     }
 
-    // MARK: - Private
-
-    private func downloadImage(from url: URL) async -> UIImage? {
+    private func downloadImage(from url: URL, cacheKey: String, targetPixelSize: CGSize?) async -> UIImage? {
         let task = Task<UIImage?, Never> { [weak self] in
-            guard let self = self else { return nil }
+            guard let self else { return nil }
             do {
                 let (data, response) = try await self.urlSession.data(from: url)
                 guard let httpResponse = response as? HTTPURLResponse,
                       (200...299).contains(httpResponse.statusCode),
-                      let image = UIImage(data: data) else { return nil }
-                await self.memoryCache.setImage(image, for: url)
-                await self.diskCache.storeImage(image, for: url)
+                      let image = Self.image(from: data, targetPixelSize: targetPixelSize) else {
+                    return nil
+                }
+                await self.memoryCache.setImage(image, forKey: cacheKey)
+                await self.diskCache.storeImage(image, forKey: cacheKey)
                 return image
             } catch {
                 guard !Task.isCancelled else { return nil }
                 return nil
             }
         }
-        runningTasks[url] = task
+        runningTasks[cacheKey] = task
         let result = await task.value
-        runningTasks[url] = nil
+        runningTasks[cacheKey] = nil
         return result
     }
-}
 
-// MARK: - Sendable support for cache classes
+    private func cacheKey(for url: URL, targetPixelSize: CGSize?) -> String {
+        guard let targetPixelSize else { return url.absoluteString }
+        let width = Int(targetPixelSize.width.rounded(.up))
+        let height = Int(targetPixelSize.height.rounded(.up))
+        return "\(url.absoluteString)#\(width)x\(height)"
+    }
+
+    private static func image(from data: Data, targetPixelSize: CGSize?) -> UIImage? {
+        guard let targetPixelSize else {
+            return UIImage(data: data)
+        }
+        let maxDimension = max(targetPixelSize.width, targetPixelSize.height)
+        guard maxDimension > 0,
+              let source = CGImageSourceCreateWithData(data as CFData, nil) else {
+            return UIImage(data: data)
+        }
+        let options: [CFString: Any] = [
+            kCGImageSourceCreateThumbnailFromImageAlways: true,
+            kCGImageSourceShouldCacheImmediately: true,
+            kCGImageSourceCreateThumbnailWithTransform: true,
+            kCGImageSourceThumbnailMaxPixelSize: max(1, Int(maxDimension.rounded(.up)))
+        ]
+        guard let cgImage = CGImageSourceCreateThumbnailAtIndex(source, 0, options as CFDictionary) else {
+            return UIImage(data: data)
+        }
+        return UIImage(cgImage: cgImage)
+    }
+}
 
 extension MemoryImageCache: @unchecked Sendable {}
 extension DiskImageCache: @unchecked Sendable {}

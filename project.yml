@@ -24,3 +24,24 @@ targets:
         PRODUCT_BUNDLE_IDENTIFIER: com.wallhaven.app
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
     dependencies: []
+  WallhavenTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources:
+      - path: Tests
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.wallhaven.tests
+        GENERATE_INFOPLIST_FILE: YES
+    dependencies:
+      - target: Wallhaven
+
+schemes:
+  Wallhaven:
+    build:
+      targets:
+        Wallhaven: all
+        WallhavenTests: [test]
+    test:
+      targets:
+        - WallhavenTests

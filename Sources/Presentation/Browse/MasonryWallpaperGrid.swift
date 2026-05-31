@@ -19,25 +19,30 @@ struct MasonryWallpaperGrid: View {
             )
 
             ScrollView {
-                HStack(alignment: .top, spacing: spacing) {
-                    ForEach(layout.columns.indices, id: \.self) { columnIndex in
-                        VStack(spacing: spacing) {
-                            ForEach(layout.columns[columnIndex]) { item in
-                                WallpaperCard(
-                                    wallpaper: item.wallpaper,
-                                    viewModel: viewModel,
-                                    width: layout.columnWidth,
-                                    height: item.height
-                                )
-                                .onTapGesture { onSelect(item.wallpaper) }
+                LazyVStack(spacing: spacing) {
+                    ForEach(layout.sections) { section in
+                        HStack(alignment: .top, spacing: spacing) {
+                            ForEach(section.columns.indices, id: \.self) { columnIndex in
+                                VStack(spacing: spacing) {
+                                    ForEach(section.columns[columnIndex]) { item in
+                                        WallpaperCard(
+                                            wallpaper: item.wallpaper,
+                                            viewModel: viewModel,
+                                            width: layout.columnWidth,
+                                            height: item.height
+                                        )
+                                        .onTapGesture { onSelect(item.wallpaper) }
+                                    }
+                                }
+                                .frame(width: layout.columnWidth, alignment: .top)
                             }
                         }
-                        .frame(width: layout.columnWidth, alignment: .top)
                     }
                 }
-                .frame(width: proxy.size.width, alignment: .top)
+                .padding(.horizontal, horizontalInset)
                 .padding(.top, 10)
                 .padding(.bottom, bottomInset)
+                .frame(width: proxy.size.width, alignment: .top)
             }
             .refreshable { await viewModel.onRefresh() }
             .onScrollGeometryChange(for: Bool.self) { geometry in
@@ -56,43 +61,44 @@ struct MasonryWallpaperGrid: View {
 }
 
 private struct MasonryLayout {
-    let columns: [[MasonryItem]]
+    let sections: [MasonrySection]
     let columnWidth: CGFloat
+    let columnCount: Int
 
     init(wallpapers: [Wallpaper], containerWidth: CGFloat, spacing: CGFloat, horizontalInset: CGFloat) {
         let columnCount = Self.columnCount(for: containerWidth)
         let contentWidth = max(0, containerWidth - horizontalInset * 2)
         let rawColumnWidth = (contentWidth - spacing * CGFloat(columnCount - 1)) / CGFloat(columnCount)
         let safeColumnWidth = floor(max(120, rawColumnWidth))
+        let batchSize = columnCount * 18
 
-        var columns = Array(repeating: [MasonryItem](), count: columnCount)
-        var columnHeights = [CGFloat](repeating: 0, count: columnCount)
+        var sections: [MasonrySection] = []
+        for batchStart in stride(from: 0, to: wallpapers.count, by: batchSize) {
+            let batchEnd = min(wallpapers.count, batchStart + batchSize)
+            var columns = Array(repeating: [MasonryItem](), count: columnCount)
+            var columnHeights = [CGFloat](repeating: 0, count: columnCount)
 
-        for (index, wallpaper) in wallpapers.enumerated() {
-            let targetColumn = columnHeights.enumerated().min(by: { $0.element < $1.element })?.offset ?? 0
-            let height = Self.estimatedHeight(for: wallpaper, columnWidth: safeColumnWidth)
-            columns[targetColumn].append(MasonryItem(index: index, wallpaper: wallpaper, height: height))
-            columnHeights[targetColumn] += height + spacing
+            for index in batchStart..<batchEnd {
+                let wallpaper = wallpapers[index]
+                let targetColumn = columnHeights.enumerated().min(by: { $0.element < $1.element })?.offset ?? 0
+                let height = Self.estimatedHeight(for: wallpaper, columnWidth: safeColumnWidth)
+                columns[targetColumn].append(MasonryItem(index: index, wallpaper: wallpaper, height: height))
+                columnHeights[targetColumn] += height + spacing
+            }
+            sections.append(MasonrySection(index: batchStart / batchSize, columns: columns))
         }
 
-        self.columns = columns
+        self.sections = sections
         self.columnWidth = safeColumnWidth
+        self.columnCount = columnCount
     }
+}
 
-    private static func columnCount(for width: CGFloat) -> Int {
-        if width >= 900 { return 4 }
-        if width >= 680 { return 3 }
-        return 2
-    }
+private struct MasonrySection: Identifiable {
+    let index: Int
+    let columns: [[MasonryItem]]
 
-    private static func estimatedHeight(for wallpaper: Wallpaper, columnWidth: CGFloat) -> CGFloat {
-        guard let size = wallpaper.pixelSize, size.width > 0, size.height > 0 else {
-            return columnWidth * 1.32
-        }
-
-        let ratio = size.height / size.width
-        return min(max(columnWidth * ratio, columnWidth * 0.72), columnWidth * 2.15)
-    }
+    var id: Int { index }
 }
 
 private struct MasonryItem: Identifiable {
@@ -101,4 +107,21 @@ private struct MasonryItem: Identifiable {
     let height: CGFloat
 
     var id: String { wallpaper.id }
+}
+
+private extension MasonryLayout {
+    static func columnCount(for width: CGFloat) -> Int {
+        if width >= 900 { return 4 }
+        if width >= 680 { return 3 }
+        return 2
+    }
+
+    static func estimatedHeight(for wallpaper: Wallpaper, columnWidth: CGFloat) -> CGFloat {
+        guard let size = wallpaper.pixelSize, size.width > 0, size.height > 0 else {
+            return columnWidth * 1.32
+        }
+
+        let ratio = size.height / size.width
+        return min(max(columnWidth * ratio, columnWidth * 0.72), columnWidth * 2.15)
+    }
 }

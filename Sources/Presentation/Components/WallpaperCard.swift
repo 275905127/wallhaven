@@ -1,6 +1,8 @@
 ﻿import SwiftUI
 
 struct WallpaperCard: View {
+    @Environment(\.displayScale) private var displayScale
+
     let wallpaper: Wallpaper
     let viewModel: BrowseViewModel
     let width: CGFloat
@@ -31,7 +33,8 @@ struct WallpaperCard: View {
         .clipped()
         .task(id: wallpaper.thumbnailURL) {
             image = nil
-            image = await viewModel.loadImage(from: wallpaper.thumbnailURL)
+            let targetSize = CGSize(width: width * displayScale, height: height * displayScale)
+            image = await viewModel.loadThumbnail(from: wallpaper.thumbnailURL, targetPixelSize: targetSize)
         }
     }
 }

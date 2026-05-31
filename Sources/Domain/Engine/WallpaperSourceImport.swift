@@ -24,6 +24,10 @@ enum WallpaperSourceImportError: LocalizedError {
 }
 
 enum WallpaperSourceImporter {
+    static func previewSources(from jsonText: String) throws -> [WallpaperSourcePreview] {
+        try importSources(from: jsonText).map(WallpaperSourcePreview.init(source:))
+    }
+
     static func importSources(from jsonText: String) throws -> [WallpaperSourceEngine] {
         guard let data = jsonText.data(using: .utf8) else {
             throw WallpaperSourceImportError.invalidJSON
@@ -71,8 +75,15 @@ enum WallpaperSourceImporter {
 
         let request = SourceEngineRequest.from(urlString: rawURL)
         let requestParams = (configuration.request?.params ?? configuration.params).stringValues
-        let authParams = configuration.authQueryItems
-        let staticItems = (request.staticQueryItems + requestParams.queryItems + authParams).deduplicatedByName()
+        let requestHeaders = configuration.request?.headers.stringValues ?? [:]
+        let auth = configuration.authSecret
+        let headerSecret = requestHeaders.headerSecret
+        let importedKey = auth?.value ?? requestParams.firstSensitiveQueryValue ?? request.staticQueryItems.firstSensitiveQueryValue ?? headerSecret?.value
+        let apiKeyQueryName = auth?.key ?? requestParams.firstSensitiveQueryName ?? request.staticQueryItems.firstSensitiveQueryName ?? headerSecret?.key ?? "apikey"
+        let staticItems = (request.staticQueryItems + requestParams.queryItems)
+            .withoutSensitiveQueryItems()
+            .mergedKeepingLastValue()
+        let staticHeaders = requestHeaders.headers.withoutSensitiveHeaders()
         let mapping = try configuration.resolvedMapping(defaultsFor: rawURL, name: name)
         let pagination = configuration.pagination
         let search = configuration.search
@@ -85,11 +96,16 @@ enum WallpaperSourceImporter {
             request: SourceEngineRequest(
                 baseURL: request.baseURL,
                 pathTemplate: request.pathTemplate,
+                method: configuration.request?.normalizedMethod ?? "GET",
                 pageQueryName: pagination?.pageQueryName ?? defaultPageQueryName,
                 searchQueryName: search?.enabled == false ? "" : (search?.param ?? defaultSearchQueryName),
+                apiKeyQueryName: apiKeyQueryName,
+                apiKeyPlacement: auth?.placement ?? headerSecret?.placement ?? .query,
+                staticHeaders: staticHeaders,
                 staticQueryItems: staticItems
             ),
-            mapping: mapping
+            mapping: mapping,
+            apiKey: importedKey ?? ""
         )
     }
 
@@ -101,6 +117,24 @@ enum WallpaperSourceImporter {
             throw WallpaperSourceImportError.missingURL(name)
         }
         return WallpaperSourceEngine(name: name, kind: .directLinks, directImages: [url])
+    }
+}
+
+struct WallpaperSourcePreview: Identifiable, Equatable {
+    let id: UUID
+    let name: String
+    let type: String
+    let endpoint: String
+    let usesAPIKey: Bool
+    let supportsSearch: Bool
+
+    init(source: WallpaperSourceEngine) {
+        id = source.id
+        name = source.name
+        type = source.kind.displayName
+        endpoint = source.kind == .directLinks ? "\(source.directImages.count) 张图片" : source.request.normalizedBaseURL + source.request.pathTemplate
+        usesAPIKey = source.hasAPIKey
+        supportsSearch = !source.request.searchQueryName.isEmpty
     }
 }
 
@@ -127,19 +161,24 @@ private struct ImportedSourceConfiguration: Decodable {
         return trimmed.isEmpty ? "json" : trimmed
     }
 
-    var authQueryItems: [SourceEngineQueryItem] {
+    var authSecret: ImportedAuthSecret? {
         guard let auth = request?.auth,
-              auth.type.lowercased() == "query",
-              !auth.key.isEmpty,
-              !auth.value.isEmpty,
-              auth.value != "YOUR_API_KEY" else {
-            return []
+              !auth.value.isPlaceholderSecret else {
+            return nil
         }
-        return [SourceEngineQueryItem(name: auth.key, value: auth.value)]
+        let type = auth.type?.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() ?? "query"
+        let key = auth.key?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        switch type {
+        case "header":
+            return ImportedAuthSecret(key: key.isEmpty ? "Authorization" : key, value: auth.value, placement: .header)
+        case "bearer":
+            return ImportedAuthSecret(key: key.isEmpty ? "Authorization" : key, value: auth.value, placement: .bearer)
+        default:
+            return ImportedAuthSecret(key: key.isEmpty ? "apikey" : key, value: auth.value, placement: .query)
+        }
     }
 
     func resolvedMapping(defaultsFor url: String, name: String) throws -> SourceEngineMapping {
-        let lastPagePath = pagination?.hasMorePath
         if let mapping {
             return SourceEngineMapping(
                 itemsPath: mapping.items ?? "data",
@@ -161,7 +200,10 @@ private struct ImportedSourceConfiguration: Decodable {
                 createdAtPath: mapping.createdAt ?? "",
                 sourceURLPath: mapping.sourceUrl ?? "",
                 colorsPath: mapping.colors ?? "",
-                lastPagePath: mapping.lastPage ?? lastPagePath ?? ""
+                lastPagePath: mapping.lastPage ?? pagination?.lastPagePath ?? pagination?.hasMorePath ?? "",
+                hasMorePath: mapping.hasMore ?? pagination?.booleanHasMorePath ?? "",
+                nextPagePath: mapping.nextPage ?? pagination?.nextPagePath ?? "",
+                defaultHasMore: pagination?.defaultHasMore
             )
         }
 
@@ -178,34 +220,59 @@ private struct ImportedSourceConfiguration: Decodable {
                 thumbnailURLPrefix: "https://www.bing.com",
                 fullImageURLPrefix: "https://www.bing.com",
                 titlePath: "copyright",
-                sourceURLPath: "copyrightlink"
+                sourceURLPath: "copyrightlink",
+                defaultHasMore: false
             )
         }
 
-        throw WallpaperSourceImportError.missingMapping(name)
+        return SourceEngineMapping(defaultHasMore: pagination?.defaultHasMore)
     }
 }
 
 private struct ImportedRequest: Decodable {
     let url: String?
+    let method: String?
     let params: [String: ImportedJSONValue]?
+    let headers: [String: ImportedJSONValue]?
     let auth: ImportedAuth?
+
+    var normalizedMethod: String {
+        let method = method?.trimmingCharacters(in: .whitespacesAndNewlines).uppercased() ?? ""
+        return method.isEmpty ? "GET" : method
+    }
 }
 
 private struct ImportedAuth: Decodable {
-    let type: String
+    let type: String?
+    let key: String?
+    let value: String
+}
+
+private struct ImportedAuthSecret {
     let key: String
     let value: String
+    let placement: SourceEngineAPIKeyPlacement
 }
 
 private struct ImportedPagination: Decodable {
     let type: String?
     let param: String?
     let hasMorePath: String?
+    let lastPagePath: String?
+    let nextPagePath: String?
 
     var pageQueryName: String {
         guard type != "none" else { return "" }
         return param ?? "page"
+    }
+
+    var defaultHasMore: Bool? {
+        type == "none" ? false : nil
+    }
+
+    var booleanHasMorePath: String? {
+        guard let hasMorePath, !hasMorePath.localizedCaseInsensitiveContains("last") else { return nil }
+        return hasMorePath
     }
 }
 
@@ -234,6 +301,8 @@ private struct ImportedMapping: Decodable {
     let sourceUrl: String?
     let colors: String?
     let lastPage: String?
+    let hasMore: String?
+    let nextPage: String?
 }
 
 private struct ImportedTransforms: Decodable {
@@ -284,17 +353,89 @@ private extension Optional where Wrapped == [String: ImportedJSONValue] {
 
 private extension Dictionary where Key == String, Value == String {
     var queryItems: [SourceEngineQueryItem] {
-        filter { !$0.key.isEmpty && !$0.value.isEmpty && $0.value != "YOUR_API_KEY" }
+        filter { !$0.key.isEmpty && !$0.value.isPlaceholderSecret }
             .map { SourceEngineQueryItem(name: $0.key, value: $0.value) }
             .sorted { $0.name < $1.name }
+    }
+
+    var headers: [SourceEngineHeader] {
+        filter { !$0.key.isEmpty && !$0.value.isPlaceholderSecret }
+            .map { SourceEngineHeader(name: $0.key, value: $0.value) }
+            .sorted { $0.name < $1.name }
+    }
+
+    var firstSensitiveQueryName: String? {
+        first { $0.key.isSensitiveQueryName && !$0.value.isPlaceholderSecret }?.key
+    }
+
+    var firstSensitiveQueryValue: String? {
+        first { $0.key.isSensitiveQueryName && !$0.value.isPlaceholderSecret }?.value
+    }
+
+    var headerSecret: ImportedAuthSecret? {
+        for (key, value) in self where key.isSensitiveHeaderName && !value.isPlaceholderSecret {
+            if key.caseInsensitiveCompare("authorization") == .orderedSame {
+                let bearerPrefix = "Bearer "
+                if value.localizedCaseInsensitiveContains(bearerPrefix),
+                   let range = value.range(of: bearerPrefix, options: .caseInsensitive) {
+                    return ImportedAuthSecret(key: key, value: String(value[range.upperBound...]), placement: .bearer)
+                }
+                return ImportedAuthSecret(key: key, value: value, placement: .header)
+            }
+            return ImportedAuthSecret(key: key, value: value, placement: .header)
+        }
+        return nil
     }
 }
 
 private extension Array where Element == SourceEngineQueryItem {
-    func deduplicatedByName() -> [SourceEngineQueryItem] {
-        var seen = Set<String>()
-        return filter { item in
-            seen.insert(item.name).inserted
+    var firstSensitiveQueryName: String? {
+        first { $0.name.isSensitiveQueryName && !$0.value.isPlaceholderSecret }?.name
+    }
+
+    var firstSensitiveQueryValue: String? {
+        first { $0.name.isSensitiveQueryName && !$0.value.isPlaceholderSecret }?.value
+    }
+
+    func withoutSensitiveQueryItems() -> [SourceEngineQueryItem] {
+        filter { !$0.name.isSensitiveQueryName && !$0.value.isPlaceholderSecret }
+    }
+
+    func mergedKeepingLastValue() -> [SourceEngineQueryItem] {
+        var indexesByName: [String: Int] = [:]
+        var items: [SourceEngineQueryItem] = []
+        for item in self where !item.name.isEmpty && !item.value.isEmpty {
+            if let index = indexesByName[item.name] {
+                items[index] = item
+            } else {
+                indexesByName[item.name] = items.count
+                items.append(item)
+            }
         }
+        return items.sorted { $0.name < $1.name }
+    }
+}
+
+private extension Array where Element == SourceEngineHeader {
+    func withoutSensitiveHeaders() -> [SourceEngineHeader] {
+        filter { !$0.name.isSensitiveHeaderName && !$0.value.isPlaceholderSecret }
+    }
+}
+
+private extension String {
+    var isSensitiveQueryName: Bool {
+        let lowercased = lowercased()
+        return lowercased == "apikey" || lowercased == "api_key" || lowercased == "key" || lowercased == "token" || lowercased == "access_token"
+    }
+
+    var isSensitiveHeaderName: Bool {
+        let lowercased = lowercased()
+        return lowercased == "authorization" || lowercased == "x-api-key" || lowercased == "api-key" || lowercased == "token"
+    }
+
+    var isPlaceholderSecret: Bool {
+        let trimmed = trimmingCharacters(in: .whitespacesAndNewlines)
+        let uppercased = trimmed.uppercased()
+        return trimmed.isEmpty || uppercased == "YOUR_API_KEY" || uppercased == "YOUR_KEY" || uppercased == "YOUR_TOKEN"
     }
 }
