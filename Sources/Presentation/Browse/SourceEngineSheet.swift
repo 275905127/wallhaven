@@ -3,9 +3,15 @@ import SwiftUI
 struct SourceEngineSheet: View {
     @Environment(\.dismiss) private var dismiss
     let viewModel: BrowseViewModel
+    let showsDoneButton: Bool
 
     @State private var editingSource: WallpaperSourceEngine?
     @State private var isQuickAddPresented = false
+
+    init(viewModel: BrowseViewModel, showsDoneButton: Bool = true) {
+        self.viewModel = viewModel
+        self.showsDoneButton = showsDoneButton
+    }
 
     var body: some View {
         NavigationStack {
@@ -68,8 +74,10 @@ struct SourceEngineSheet: View {
             }
             .navigationTitle("图源")
             .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("完成") { dismiss() }
+                if showsDoneButton {
+                    ToolbarItem(placement: .cancellationAction) {
+                        Button("完成") { dismiss() }
+                    }
                 }
             }
             .sheet(item: $editingSource) { source in
@@ -83,7 +91,6 @@ struct SourceEngineSheet: View {
                 }
             }
             .presentationDetents([.large])
-            .presentationBackground(.thinMaterial)
         }
     }
 }
@@ -176,7 +183,6 @@ private struct QuickSourceAddSheet: View {
             }
         }
         .presentationDetents([.large])
-        .presentationBackground(.thinMaterial)
     }
 }
 

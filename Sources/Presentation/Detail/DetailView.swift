@@ -44,7 +44,7 @@ struct DetailView: View {
                             Image(systemName: "square.and.arrow.up")
                                 .frame(width: 36, height: 36)
                         }
-                        .liquidGlassSurface(cornerRadius: 18, isInteractive: true)
+                        .buttonStyle(.glass)
                         detailToolbarButton(systemImage: "square.and.arrow.down") {
                             Task { await saveToPhotos() }
                         }
@@ -108,7 +108,7 @@ struct DetailView: View {
         }
         .font(.headline)
         .foregroundStyle(.white)
-        .liquidGlassSurface(cornerRadius: 18, isInteractive: true)
+        .buttonStyle(.glass)
     }
 }
 

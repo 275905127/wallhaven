@@ -1,41 +1,31 @@
 import SwiftUI
 
 extension View {
-    @ViewBuilder
     func liquidGlassSurface(
         cornerRadius: CGFloat,
         tint: Color? = nil,
         isInteractive: Bool = false
     ) -> some View {
-        if #available(iOS 26.0, *) {
-            if let tint, isInteractive {
-                glassEffect(.regular.tint(tint).interactive(), in: .rect(cornerRadius: cornerRadius))
-            } else if let tint {
-                glassEffect(.regular.tint(tint), in: .rect(cornerRadius: cornerRadius))
-            } else if isInteractive {
-                glassEffect(.regular.interactive(), in: .rect(cornerRadius: cornerRadius))
-            } else {
-                glassEffect(.regular, in: .rect(cornerRadius: cornerRadius))
-            }
+        if let tint, isInteractive {
+            glassEffect(.regular.tint(tint).interactive(), in: .rect(cornerRadius: cornerRadius))
+        } else if let tint {
+            glassEffect(.regular.tint(tint), in: .rect(cornerRadius: cornerRadius))
+        } else if isInteractive {
+            glassEffect(.regular.interactive(), in: .rect(cornerRadius: cornerRadius))
         } else {
-            background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
+            glassEffect(.regular, in: .rect(cornerRadius: cornerRadius))
         }
     }
 
-    @ViewBuilder
     func liquidGlassCapsule(tint: Color? = nil, isInteractive: Bool = false) -> some View {
-        if #available(iOS 26.0, *) {
-            if let tint, isInteractive {
-                glassEffect(.regular.tint(tint).interactive(), in: .capsule)
-            } else if let tint {
-                glassEffect(.regular.tint(tint), in: .capsule)
-            } else if isInteractive {
-                glassEffect(.regular.interactive(), in: .capsule)
-            } else {
-                glassEffect(.regular, in: .capsule)
-            }
+        if let tint, isInteractive {
+            glassEffect(.regular.tint(tint).interactive(), in: .capsule)
+        } else if let tint {
+            glassEffect(.regular.tint(tint), in: .capsule)
+        } else if isInteractive {
+            glassEffect(.regular.interactive(), in: .capsule)
         } else {
-            background(.ultraThinMaterial, in: Capsule())
+            glassEffect(.regular, in: .capsule)
         }
     }
 }
@@ -45,11 +35,7 @@ struct LiquidGlassContainer<Content: View>: View {
     @ViewBuilder let content: () -> Content
 
     var body: some View {
-        if #available(iOS 26.0, *) {
-            GlassEffectContainer(spacing: spacing) {
-                content()
-            }
-        } else {
+        GlassEffectContainer(spacing: spacing) {
             content()
         }
     }
@@ -59,16 +45,10 @@ extension Button {
     @MainActor
     @ViewBuilder
     func liquidGlassButtonStyle(prominent: Bool = false) -> some View {
-        if #available(iOS 26.0, *) {
-            if prominent {
-                buttonStyle(.glassProminent)
-            } else {
-                buttonStyle(.glass)
-            }
-        } else if prominent {
-            buttonStyle(.borderedProminent)
+        if prominent {
+            buttonStyle(.glassProminent)
         } else {
-            buttonStyle(.bordered)
+            buttonStyle(.glass)
         }
     }
 }

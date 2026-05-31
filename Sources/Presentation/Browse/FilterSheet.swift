@@ -3,11 +3,13 @@ import SwiftUI
 struct FilterSheet: View {
     @Environment(\.dismiss) private var dismiss
     let viewModel: BrowseViewModel
+    let showsDoneButton: Bool
 
     @State private var apiKey: String
 
-    init(viewModel: BrowseViewModel) {
+    init(viewModel: BrowseViewModel, showsDoneButton: Bool = true) {
         self.viewModel = viewModel
+        self.showsDoneButton = showsDoneButton
         _apiKey = State(initialValue: viewModel.sourceConfiguration.apiKey)
     }
 
@@ -79,12 +81,13 @@ struct FilterSheet: View {
             }
             .navigationTitle("筛选")
             .toolbar {
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("完成") { dismiss() }
+                if showsDoneButton {
+                    ToolbarItem(placement: .confirmationAction) {
+                        Button("完成") { dismiss() }
+                    }
                 }
             }
             .presentationDetents([.large])
-            .presentationBackground(.thinMaterial)
         }
     }
 }
